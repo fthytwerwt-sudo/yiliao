@@ -4,6 +4,8 @@
 
 这是一个处于 strategy_definition_pending 的项目。项目已有研究资料，但业务方向、市场、客户、MVP、商业模式、价格、最小闭环、验证顺序、Go/No-Go 尚未由用户与 ChatGPT 正式锁定。
 
+协作机制的 canonical source 是 `collaboration_system/`。ChatGPT Project 使用版必须来自语义完整包 `dist/gpt_project_sync_packages/2026-08-18_medical_project_collaboration_os_v2/`；旧短摘要包已废弃，不得上传或作为执行依据。
+
 GitHub main 是唯一的动态项目事实源。ChatGPT Project 是长期协作机制层；本地是执行现场；Obsidian 是跨项目机制来源。
 
 ## 新会话读取顺序
@@ -28,6 +30,7 @@ project_facts 只保存已确认事实、状态、未决策事项与带 provenan
 
 - 协作机制：collaboration_system/。
 - 执行入口：collaboration_system/07_Codex执行单与执行器权限边界.md。
+- Project 协作机制包：dist/gpt_project_sync_packages/2026-08-18_medical_project_collaboration_os_v2/。
 - 项目事实：project_facts/01_当前已确认事实.md。
 - 当前状态：project_facts/02_当前状态_project_state.yaml。
 - 未决策事项：project_facts/03_当前未决策事项.md。
