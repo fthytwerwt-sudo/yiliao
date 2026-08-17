@@ -1,0 +1,41 @@
+# macOS and editor residue
+.DS_Store
+.idea/
+.vscode/
+
+# Local-only project operations and generated scratch space
+.omx/
+.tmp/
+.local/
+tmp/
+scratch/
+
+# Credentials and machine configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials/
+secrets/
+
+# Source reports and sensitive evidence stay local unless the user explicitly
+# classifies a specific artifact as suitable for this public repository.
+*.docx
+*.pdf
+*.xlsx
+*.xls
+*.csv
+*.tsv
+source_reports/
+private/
+evidence/private/
+
+# Never version patient or personally identifiable health information.
+patient_data/
+patients/
+intake_exports/
+medical_records/
+recordings/
