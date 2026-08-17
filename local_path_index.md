@@ -18,9 +18,10 @@
 ## Canonical Project collaboration package
 
 - 路径：/Users/fan/Documents/医疗/yiliao/dist/gpt_project_sync_packages/2026-08-18_medical_project_collaboration_os
-- 生成时间：待本轮机制基线 commit 后写入。
-- 来源 Git commit：待本轮机制基线 commit 后写入。
-- local_validation_status：pending_generation。
+- 生成时间：2026-08-18。
+- 来源 Git commit：e5dc7e6b1c3e6c2c450d54f6122bb2c35357204c。
+- local_validation_status：passed_regression_contract.
+- package_generated：true。
 - user_uploaded_to_project_ui：unknown。
 - project_ui_verified：unknown。
 

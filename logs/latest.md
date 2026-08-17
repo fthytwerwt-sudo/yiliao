@@ -7,6 +7,7 @@
 - 协作机制级重构正在将 canonical source 收敛到 collaboration_system。
 - 基础市场报告被重新归类为 research_baselines，不是项目战略。
 - 旧业务事实型 Project 包已归档并标为 DEPRECATED_DO_NOT_UPLOAD。
+- 新 Project 机制包已生成；其 Git 同步状态必须由当前 local HEAD 与 origin/main readback 核验。用户上传和 UI 验证仍为 unknown。
 
 ## 当前状态
 
