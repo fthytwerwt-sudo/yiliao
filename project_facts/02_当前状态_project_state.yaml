@@ -108,7 +108,9 @@ data_handling:
   external_research_changes_current_facts_automatically: false
 
 formal_sync:
-  status: local_commits_pending_push
+  status: formal_synced
   canonical_branch: main
   baseline_commit: aef28ea51e80705a8ab9a8d39cae09e25c4b6e38
   static_project_package: dist/gpt_project_sync_packages/2026-08-17_initial_medical_tourism_project
+  last_remote_readback_commit: d145e4e3a9a9fcc567c4bd1628207bea2d8c4aa3
+  last_remote_readback_result: local_head_equal_to_origin_main
