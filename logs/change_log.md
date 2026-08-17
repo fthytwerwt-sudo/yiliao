@@ -3,6 +3,7 @@
 | 日期 | 变更范围 | 变化摘要 | 事实状态影响 | 复核 / 同步状态 |
 | --- | --- | --- | --- | --- |
 | 2026-08-17 | 项目初始化 | 建立项目事实、执行规则、运营模板、复盘结构和静态包生成入口 | 建立 pre_validation 基线；不增加任何供应商、客户或合规已证实事实 | local_only，待 Git commit/push/readback |
+| 2026-08-17 | ChatGPT Project 静态包 | 生成 9 文件项目理解包，来源为 aef28ea51e80705a8ab9a8d39cae09e25c4b6e38 | 不改变动态事实；用户上传/生效仍为 UNKNOWN | local commit pending push |
 
 记录原则：
 

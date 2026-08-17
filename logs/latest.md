@@ -17,6 +17,7 @@
 - 90 天 Supply → Demand → Delivery → Economics 验证路径、阈值和 No-Go。
 - 机构 SLA、三账报价、客户旅程、异常、双语资料、随访等可填写模板。
 - 匿名化的漏斗、单位经济、访谈、实验与事件记录结构。
+- 以首笔本地基线提交为来源的 ChatGPT Project 静态资料包；用户上传状态仍为 UNKNOWN。
 
 ## 当前未完成 / 不得误报
 
