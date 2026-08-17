@@ -1,4 +1,12 @@
-# 成都国际医疗旅游项目：ChatGPT Project 静态资料包
+# DEPRECATED_DO_NOT_UPLOAD：历史 Project 上下文快照
+
+本文件所在目录已归档，不得上传到当前 ChatGPT Project。它保留的是历史结构证据，包含动态业务事实与研究候选，不能再作为协作机制包。
+
+当前 canonical 包以 local_path_index.md 和 collaboration_system/16 为准。
+
+---
+
+# 原历史 Manifest（仅供审计）
 
 生成日期：2026-08-17。
 

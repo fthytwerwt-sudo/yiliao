@@ -1,36 +1,21 @@
 # 最新状态
 
-更新时间：2026-08-17。
+更新时间：2026-08-18。
 
-## 当前项目状态
+## 已确认
 
-- 阶段：pre_validation。
-- 当前闸门：Day 0-30 Supply + Compliance Gate。
-- 当前状态：项目事实、执行规则、数据记录结构与运营模板已在本地初始化；本条目本身不证明机构合作、合规许可、客户付款或商业模式成立。
-- 事实基线：v3 市场报告为当前基线；早期报告仅为历史/补充。两份报告的结构性文本/表格读取通过；本机 LibreOffice 渲染缺失大量中文 glyph，原始 DOCX 的视觉布局仍待 WPS/Word 人工复核。
-- 外部执行：未授权，external_execution_allowed: false。
+- 协作机制级重构正在将 canonical source 收敛到 collaboration_system。
+- 基础市场报告被重新归类为 research_baselines，不是项目战略。
+- 旧业务事实型 Project 包已归档并标为 DEPRECATED_DO_NOT_UPLOAD。
 
-## 本轮已建立
+## 当前状态
 
-- 项目入口、AGENTS、新会话阅读顺序和事实裁决机制。
-- 当前正式事实与 machine-readable project state。
-- 90 天 Supply → Demand → Delivery → Economics 验证路径、阈值和 No-Go。
-- 机构 SLA、三账报价、客户旅程、异常、双语资料、随访等可填写模板。
-- 匿名化的漏斗、单位经济、访谈、实验与事件记录结构。
-- 以首笔本地基线提交为来源的 ChatGPT Project 静态资料包；用户上传状态仍为 UNKNOWN。
-- 初始 main 已完成推送与回读。任何会话需要即时 SHA 或同步结论时，必须以当前 git readback 比对 local HEAD 与 origin/main，而不是依赖本日志中的历史 SHA。
+项目处于 strategy_definition_pending。尚无由用户与 ChatGPT 正式锁定的市场、客户、产品、商业模式、价格、验证顺序、正式门槛或 Go/No-Go。
 
-## 当前未完成 / 不得误报
+## 当前唯一安全动作
 
-- 尚未获得任何机构书面 SLA、外籍流程、价格或双语交付证据。
-- 尚未获得专业法律/数据/合同/支付/旅行边界意见。
-- 尚未进行正式获客、收款、真实订金或客户成行。
-- 尚无可报告的 CAC、退款、履约成本、贡献或客户结果。
+由用户与 ChatGPT 比较候选路线，锁定第一轮最小商业闭环和最低成本验证设计；在此之前 Codex 只可做结构化、只读研究、比较框架和已锁定机制执行。
 
-## 唯一下一步
+## 未确认
 
-在用户授权的外部接触之前，准备并复审 operations/03_医院机构SLA核验模板.md 的机构访谈问题、证据字段和责任边界；授权后优先核验至少两家候选机构，而不是扩建平台或发起获客。
-
-## 读者提醒
-
-若本文件与 project_facts/01 或 02 冲突，以 current facts/state 为准，并在本次工作结束时修复冲突。远端同步状态需由 Git readback 核验，不由本文件自行宣称。
+真实业务验证、供应商、客户、价格、付款、交付、合规许可和经营指标均未开始或未得到项目事实证据。

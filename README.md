@@ -1,68 +1,32 @@
 # 成都国际医疗旅游项目
 
-这是一个以成都为目的地、面向居住美国且具有中国经验的华人/亚裔 wellness 客群的跨境健康管理协调项目。项目方不提供诊断、治疗决定或疗效承诺；当前要验证的是一个由持证机构、旅行伙伴和项目协调方各自承担责任的服务闭环。
+这是一个已建立协作与事实系统、但尚未由用户与 ChatGPT 锁定具体商业战略的项目仓库。
 
-## 当前阶段
+## 当前真实状态
 
-已确认：项目处于 pre_validation，正在进入 Day 0-30 Supply + Compliance Gate。
+- 项目存在、两份基础研究资料和协作机制均已确认。
+- 市场、首发客户、产品、商业模式、价格、最小闭环、验证顺序、Go/No-Go 均尚未最终锁定。
+- 当前阶段：strategy_definition_pending。
+- 当前唯一工作目标：由用户与 ChatGPT 锁定第一轮最小商业闭环和最低成本验证路径。
+- Codex 不得从研究资料自行选择路线；缺锁定战略时返回 blocked_strategy_not_locked。
 
-当前不是已被市场证明的成熟业务。当前投资判断是 Conditional Go：仅值得在预算受控、停止线明确的 90 天真实交易验证中继续。
+## Canonical 入口
 
-## 当前唯一主目标
+| 需要回答的问题 | 读取位置 |
+| --- | --- |
+| 我们怎样协作 | collaboration_system/00_总览_用户到现实反馈的完整闭环.md |
+| 当前已确认的项目事实 | project_facts/01_当前已确认事实.md |
+| 当前机器可读状态 | project_facts/02_当前状态_project_state.yaml |
+| 当前尚未决定什么 | project_facts/03_当前未决策事项.md |
+| 已正式锁定的决定 | project_facts/04_正式决策记录.md |
+| 研究给出的候选，不是决定 | research_baselines/ |
+| 当前目标与最新动态 | logs/current_target.md 与 logs/latest.md |
+| 未锁定路线的草案模板 | candidate_playbooks/ |
 
-把“成都有资源”的叙事，证据化为第一款合法可卖、可书面报价、可双语交付、可处理异常的 SKU：成都东方健康管理 6 日体验。
+## 分层原则
 
-在至少一家机构提供外籍流程、书面价格、英文/双语交付和异常/转诊 SLA 前，不扩大正式获客。
+Project 保存我们怎么配合；GitHub main 保存项目现在真实是什么；研究资料只告诉我们可能怎么做；Codex 只执行已锁定的决定。
 
-## 当前第一市场与第一产品
+## 不在当前范围
 
-- 第一市场：居住美国、35-60 岁、具有中国旅行或生活经验、认可但不盲信中医、可安排 6-8 天并具 wellness 消费能力的人群。
-- 第一产品：成都东方健康管理 6 日体验，定位为 wellness / 东方健康管理体验，不是疾病治疗套餐。
-- 客户候选总支付：USD 3,800-5,500，不含国际机票。该价带和所有单位经济数字均为 HYPOTHESIS，须以真实交易校准。
-
-## 四个必须被真实验证的问题
-
-1. Supply：是否有真正合法、可出售、可书面报价的成都服务供给。
-2. Demand：目标客户是否愿意为合规成都方案支付真实订金。
-3. Delivery：客户是否愿意来成都并完成约定交付。
-4. Economics：扣除履约与获客成本后，项目协调服务收入是否为正。
-
-访问、点赞、咨询、宏观市场规模或口头合作意向均不能替代上述证据。
-
-## 现在明确不做
-
-不开发官网、App、医疗平台、CRM、RAG、多 Agent runtime、支付系统或医院 HIS 对接；不投放真实广告；不销售医疗服务；不替代律师、医院或旅行伙伴作专业结论。
-
-## 新会话从哪里开始读
-
-依次阅读：
-
-1. AGENTS.md
-2. project_facts/00_项目总述.md
-3. project_facts/01_当前正式事实.md
-4. project_facts/02_当前状态_project_state.yaml
-5. logs/latest.md
-6. logs/current_target.md
-7. 与当前任务对应的 execution_rules、review_loop 或 operations 文件
-
-## 目录地图
-
-- project_facts：当前正式项目事实、状态、产品、商业模型、90 天验证和边界。
-- execution_rules：用户、ChatGPT、Codex 与外部研究工具的协作、路由和回写规则。
-- logs：当前目标、最近状态、决定和变更记录。
-- review_loop：真实验证数据的记录结构；不能用估算值冒充观测值。
-- operations：供应商核验、报价、客户旅程、异常和随访的执行框架。
-- references：基础报告索引、版本裁决和证据规则；原始报告不提交。
-- dist/gpt_project_sync_packages：给 ChatGPT Project 上传的静态快照，不是动态事实源。
-
-## 事实状态标签
-
-- FACT-A：政府、监管或医院官方原始资料。
-- FACT-B：企业/机构官网公开资料。
-- FACT-C：可靠二级资料。
-- INFERRED：由已知资料得出的推断。
-- HYPOTHESIS：90 天必须测试的商业假设。
-- DECISION：当前项目阶段选择。
-- UNKNOWN：尚无足够证据，不能补造数字。
-
-GitHub main 是跨会话的动态项目事实源。ChatGPT Project 静态包、聊天记忆、外部研究和本地文件都不能自动覆盖 main。
+不自动启动真实获客、机构联系、收款、签约、广告、医疗服务、旅行服务、患者资料处理、平台建设或任何尚未由用户授权的外部动作。

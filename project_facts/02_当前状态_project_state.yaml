@@ -1,115 +1,46 @@
-schema_version: 1
+schema_version: 2
 project_id: chengdu_international_medical_tourism
 project_name: 成都国际医疗旅游项目
-state_as_of: "2026-08-17"
+state_as_of: "2026-08-18"
 
 stage:
-  code: pre_validation
-  label: Day 0-30 Supply + Compliance Gate
-  status: active_preparation
-  advance_only_when: supply_and_compliance_gate_has_written_evidence
+  code: strategy_definition_pending
+  label: 战略与最小验证路径设计
+  status: active
 
-investment_decision:
-  status: conditional_go
-  evidence_status: decision_based_on_v3_baseline
-  meaning: budget-controlled 90-day real-transaction validation only
+strategy:
+  strategy_locked: false
+  locked_by: null
+  locked_decision_id: null
+  meaning: 市场、客户、产品、商业模式、价格、验证顺序和Go_No_Go尚未最终锁定
 
-source_of_current_business_baseline:
-  report: "《成都国际医疗旅游项目市场调研报告_v3.docx》"
-  local_path_index: local_path_index.md
-  version_rule: v3_wins_on_conflict_unless_user_or_new_evidence_overrides
+research_baselines:
+  status: available_as_input
+  location: research_baselines
+  may_change_strategy_automatically: false
 
-primary_market:
-  country: United States
-  segment: 居住美国的华人亚裔或有中国经验的wellness客户
-  status: decision
-  exclusions:
-    - 泛欧美人群
-    - 墨西哥作为首发客源市场
-    - 马来西亚或泛东南亚作为默认首发方向
+current_goal:
+  code: lock_first_minimum_validation_loop
+  owner: user_and_chatgpt
+  codex_role: structure_options_and_execute_locked_decisions_only
 
-primary_product:
-  name: 成都东方健康管理6日体验
-  type: wellness
-  status: decision
-  prohibited_positioning:
-    - 疾病治疗套餐
-    - 疗效或治愈承诺
-    - 复杂医疗套餐
-    - 医疗签证承诺
-
-commercial_model:
-  accounting_structure:
-    clinical_or_licensed_services: client_to_licensed_provider
-    travel_services: client_to_qualified_travel_partner
-    project_coordination: client_to_project_operator
-  project_role: non-clinical bilingual coordination and execution support
-
-hypotheses:
-  candidate_total_price_usd:
-    low: 3800
-    p50: 4800
-    high: 5500
-    excludes: international_airfare
-    status: hypothesis
-  candidate_coordination_fee_usd:
-    p50: 2200
-    status: hypothesis
-  candidate_direct_fulfillment_cost_usd:
-    p50: 850
-    status: hypothesis
-  candidate_paid_cac_usd:
-    p50: 650
-    expansion_threshold_max: 900
-    status: hypothesis
-  arrival_cac_threshold_usd:
-    max: 1200
-    status: hypothesis
-  p50_contribution_usd:
-    candidate: 700
-    expansion_threshold_min_exclusive: 600
-    status: hypothesis
-
-go_gates:
-  valid_deposits_min: 5
-  arrivals_min: 3
-  completed_cases_min: 3
-  p50_contribution_usd_min_exclusive: 600
-  supplier_requirements:
-    - written_foreign_patient_process
-    - written_price
-    - bilingual_or_english_delivery
-    - exception_and_referral_sla
-  legal_boundary_requirements:
-    - data
-    - advertising
-    - contracts
-    - payments
-    - travel
-    - medical_responsibility
-  status: hypothesis_to_validate
-
-current_target:
-  code: day_0_30_supply_and_compliance
-  unique_goal: turn_resource_story_into_a_legal_quotable_deliverable_sku
-  acquisition_scale_allowed: false
+execution:
   external_execution_allowed: false
+  strategy_execution_allowed: false
+  blocked_if_strategy_not_locked: blocked_strategy_not_locked
 
-known_unknowns:
-  - supplier_sla_and_foreign_patient_process
-  - executable_legal_and_data_boundaries
-  - real_deposit_conversion
-  - real_arrival_and_completion
-  - real_cac_and_contribution
+known_confirmed_absences:
+  - no_confirmed_supplier_agreement
+  - no_confirmed_customer_payment
+  - no_confirmed_delivery
+  - no_confirmed_operating_metrics
+  - no_confirmed_final_strategy
 
 data_handling:
   patient_data_in_git: prohibited
   personal_health_information_in_chat: prohibited
-  external_research_changes_current_facts_automatically: false
 
 formal_sync:
-  status: formal_synced
   canonical_branch: main
-  baseline_commit: aef28ea51e80705a8ab9a8d39cae09e25c4b6e38
-  static_project_package: dist/gpt_project_sync_packages/2026-08-17_initial_medical_tourism_project
+  status: formal_synced
   verification_requirement: compare_current_local_head_to_origin_main_at_task_completion
