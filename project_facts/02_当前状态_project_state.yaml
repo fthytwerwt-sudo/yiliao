@@ -112,5 +112,4 @@ formal_sync:
   canonical_branch: main
   baseline_commit: aef28ea51e80705a8ab9a8d39cae09e25c4b6e38
   static_project_package: dist/gpt_project_sync_packages/2026-08-17_initial_medical_tourism_project
-  last_remote_readback_commit: d145e4e3a9a9fcc567c4bd1628207bea2d8c4aa3
-  last_remote_readback_result: local_head_equal_to_origin_main
+  verification_requirement: compare_current_local_head_to_origin_main_at_task_completion
