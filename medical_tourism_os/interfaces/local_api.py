@@ -1,24 +1,31 @@
 """
 用途：
-提供 loopback-only 的本地只读 API 壳层，用于离线调试当前系统状态。
+提供 loopback-only 的本地只读 API，可作为真实本地 HTTP server 的应用对象。
 
 上游：
-测试和本地开发者通过 `handle()` 模拟读取接口响应。
+测试和本地开发者可通过 `handle()` 直接调用，也可通过 `create_server()` 启动本地 HTTP server。
 
 下游：
-复用 CLI 的 synthetic 构造逻辑，返回字符串响应而不启动真正的 HTTP server。
+复用 CLI 的 state root 与服务构造逻辑，返回只读、安全、无外部副作用的响应。
 
 边界：
-这里只声明 127.0.0.1 绑定与只读路由；不监听公网，不自动启动，不产生外部副作用。
+这里只允许绑定 `127.0.0.1`；不自动启动，不开放公网，不执行发布或同步。
 """
 
 from __future__ import annotations
 
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
-from typing import Callable, Dict, Tuple
+from pathlib import Path
+from typing import Callable, Dict, Optional, Tuple
 
 from medical_tourism_os.config import SystemConfig
-from medical_tourism_os.interfaces.cli import _build_learning_state, _build_phase4_state
+from medical_tourism_os.interfaces.cli import (
+    _build_governance_service,
+    _build_learning_state,
+    _build_phase4_state,
+    _resolve_state_root,
+)
 from medical_tourism_os.services import CommentIntake, LeadScorer, ProductMatcher, RiskRouter
 from medical_tourism_os.workflows.e2e_scenario import run_synthetic_scenario
 
@@ -29,12 +36,13 @@ class LocalApiApplication:
     提供本地调试用的 loopback-only 接口表与请求处理器。
 
     关键边界：
-    这里没有真正启动 server；只有显式 `handle()` 才返回只读调试结果。
+    这里默认不自动启动；只有显式 `create_server()` / `serve_forever()` 才会监听本地端口。
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, state_root: Optional[Path] = None, bind_port: int = 8765) -> None:
         self.bind_host = "127.0.0.1"
-        self.bind_port = 8765
+        self.bind_port = bind_port
+        self.state_root = _resolve_state_root(str(state_root) if state_root is not None else None)
         self.config = SystemConfig.default()
         self.routes = {
             "/research": self._research,
@@ -53,6 +61,42 @@ class LocalApiApplication:
             "/reviews": self._reviews,
             "/decisions": self._decisions,
         }
+
+    def create_server(self) -> HTTPServer:
+        """
+        作用：
+        创建一个真实 loopback-only HTTP server，但不自动启动。
+
+        关键边界：
+        handler 只暴露 GET 且绑定 127.0.0.1，避免本地调试接口误变成公网控制面。
+        """
+
+        application = self
+
+        class LocalOnlyHandler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802 - stdlib callback name
+                status, body = application.handle("GET", self.path)
+                body_bytes = body.encode("utf-8")
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body_bytes)))
+                self.end_headers()
+                self.wfile.write(body_bytes)
+
+            def log_message(self, format: str, *args: object) -> None:
+                # 本地调试接口不向 stdout 打访问日志，避免污染测试输出。
+                return
+
+        return HTTPServer((self.bind_host, self.bind_port), LocalOnlyHandler)
+
+    def serve_forever(self) -> None:
+        """创建并运行本地 HTTP server，直到外部显式关闭。"""
+
+        server = self.create_server()
+        try:
+            server.serve_forever()
+        finally:
+            server.server_close()
 
     def handle(self, method: str, path: str) -> Tuple[int, str]:
         """
@@ -80,27 +124,28 @@ class LocalApiApplication:
             "Local API debug index\n"
             f"Bind host: {self.bind_host}\n"
             f"Bind port: {self.bind_port}\n"
+            f"State root: {self.state_root}\n"
             f"Adapter status: {'disabled' if not self.config.adapters_enabled else 'enabled'}\n"
             f"External execution allowed: {self.config.external_execution_allowed}\n"
-            "Mode: read-only debug"
+            "Mode: local-only read-only debug"
         )
 
     def _research(self) -> Dict[str, object]:
-        state = _build_phase4_state()
-        ingested = state["ingested"]
+        governance = _build_governance_service(state_root=self.state_root, config=self.config)
         return {
             "items": [
                 {
-                    "record_id": ingested.record.id,
-                    "classification": ingested.record.classification.value,
-                    "review_status": ingested.record.review_status.value,
-                    "lifecycle": list(ingested.lifecycle),
+                    "record_id": record.id,
+                    "classification": record.classification.value,
+                    "review_status": record.review_status.value,
+                    "lifecycle": ["RAW", "STAGING", "ADJUDICATED"],
                 }
+                for record in governance.list_review_queue()
             ]
         }
 
     def _facts(self) -> Dict[str, object]:
-        governance = _build_phase4_state()["governance"]
+        governance = _build_governance_service(state_root=self.state_root, config=self.config)
         return {
             "items": [
                 {
@@ -114,15 +159,15 @@ class LocalApiApplication:
         }
 
     def _demand(self) -> Dict[str, object]:
-        signal = _build_phase4_state()["signal"]
+        signal = _build_phase4_state(state_root=self.state_root)["signal"]
         return {"items": [{"id": signal.id, "market": signal.market, "theme": signal.theme}]}
 
     def _products(self) -> Dict[str, object]:
-        product = _build_phase4_state()["product"]
+        product = _build_phase4_state(state_root=self.state_root)["product"]
         return {"items": [{"code": product.code, "status": product.status}]}
 
     def _content(self) -> Dict[str, object]:
-        drafts = _build_phase4_state()["drafts"]
+        drafts = _build_phase4_state(state_root=self.state_root)["drafts"]
         return {
             "items": [
                 {
@@ -136,7 +181,7 @@ class LocalApiApplication:
         }
 
     def _publishing(self) -> Dict[str, object]:
-        draft = _build_phase4_state()["drafts"][0]
+        draft = _build_phase4_state(state_root=self.state_root)["drafts"][0]
         return {
             "items": [
                 {
@@ -176,7 +221,7 @@ class LocalApiApplication:
         return {"items": [scorecard.to_dict()]}
 
     def _matches(self) -> Dict[str, object]:
-        state = _build_phase4_state()
+        state = _build_phase4_state(state_root=self.state_root)
         items = ProductMatcher().match(
             non_clinical_goal="general coordination question",
             region="TEST_REGION_A",

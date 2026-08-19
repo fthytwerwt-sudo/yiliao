@@ -17,7 +17,7 @@
   数据治理、风险路由、候选需求/产品/内容、学习闭环、CLI、本地 API、synthetic E2E。
 - 所有外部 adapter 仍为 Mock / disabled。
 - GitHub sync 仅支持 dry-run 预览，不执行真实同步。
-- Local API 仅声明绑定 `127.0.0.1`，不自动启动 server。
+- Local API 可创建并运行只绑定 `127.0.0.1` 的本地 HTTP server，但默认不自动启动。
 - 当前测试通过只说明技术合同成立，不说明市场、业务、医疗、合规或商业验证完成。
 
 ## Canonical 入口

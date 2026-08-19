@@ -55,4 +55,3 @@ def export_canonical_facts(records: Iterable[FactRecord]) -> List[Dict[str, Any]
             }
         )
     return exported
-

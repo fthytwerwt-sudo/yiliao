@@ -50,22 +50,48 @@ def _write_json(payload: Dict[str, object], output: IO[str]) -> int:
     return 0
 
 
-def _build_governance_service() -> DataGovernanceService:
-    """为单次 CLI 调用创建隔离的数据治理服务。"""
+def default_state_root() -> Path:
+    """
+    作用：
+    提供默认稳定 state root。
 
-    directory = Path(tempfile.mkdtemp(prefix="medical-tourism-os-cli-"))
-    store = SqliteStore(directory / "cli.sqlite3")
+    关键边界：
+    默认路径位于系统 temp 目录下，不写入当前仓库工作树。
+    """
+
+    return Path(tempfile.gettempdir()) / "medical-tourism-os-state"
+
+
+def _resolve_state_root(state_root: Optional[str]) -> Path:
+    """解析显式或默认 state root，并确保目录存在。"""
+
+    resolved = Path(state_root).expanduser() if state_root else default_state_root()
+    resolved.mkdir(parents=True, exist_ok=True)
+    return resolved
+
+
+def _database_path_for_state_root(state_root: Path, config: SystemConfig) -> Path:
+    """返回指定 state root 下的 SQLite 文件路径。"""
+
+    return state_root / config.storage_path
+
+
+def _build_governance_service(*, state_root: Path, config: Optional[SystemConfig] = None) -> DataGovernanceService:
+    """为指定 state root 创建可复用的数据治理服务。"""
+
+    resolved_config = config or SystemConfig.default()
+    store = SqliteStore(_database_path_for_state_root(state_root, resolved_config))
     store.migrate()
     return DataGovernanceService(
         repository=FactRepository(store),
-        audit_logger=AuditLogger(directory / "cli-audit.jsonl"),
+        audit_logger=AuditLogger(state_root / "cli-audit.jsonl"),
     )
 
 
-def _build_phase4_state() -> Dict[str, object]:
+def _build_phase4_state(*, state_root: Path) -> Dict[str, object]:
     """构建一个最小 synthetic candidate state，供多条 CLI 路径复用。"""
 
-    governance = _build_governance_service()
+    governance = _build_governance_service(state_root=state_root)
     ingested = governance.ingest_research(
         dict(SYNTHETIC_RESEARCH_RECORD),
         source="synthetic://research/001",
@@ -157,6 +183,32 @@ def _help_payload() -> Dict[str, object]:
     }
 
 
+def _parse_cli_options(argv: Sequence[str]) -> tuple[Path, list[str]]:
+    """
+    作用：
+    解析全局 CLI 选项，目前只支持 `--state-root`。
+
+    关键边界：
+    这里不引入复杂 parser，避免为了几个固定命令扩大实现面。
+    """
+
+    args = list(argv)
+    state_root_value: Optional[str] = None
+    normalized_args: list[str] = []
+    index = 0
+    while index < len(args):
+        current = args[index]
+        if current == "--state-root":
+            if index + 1 >= len(args):
+                raise ValueError("state_root_value_required")
+            state_root_value = args[index + 1]
+            index += 2
+            continue
+        normalized_args.append(current)
+        index += 1
+    return _resolve_state_root(state_root_value), normalized_args
+
+
 def run_cli(argv: Optional[Sequence[str]] = None, *, output: Optional[IO[str]] = None) -> int:
     """
     作用：
@@ -166,17 +218,25 @@ def run_cli(argv: Optional[Sequence[str]] = None, *, output: Optional[IO[str]] =
     所有命令都必须保持 synthetic / dry-run；即使用户传了 sync，也不能执行真实外部动作。
     """
 
-    args = list(argv or [])
+    raw_args = list(argv or [])
     stream = output if output is not None else __import__("sys").stdout
     config = SystemConfig.default()
+    try:
+        state_root, args = _parse_cli_options(raw_args)
+    except ValueError as exc:
+        return _write_json({"error": str(exc), **_help_payload()}, stream)
     if not args:
         return _write_json(_help_payload(), stream)
 
     if args[:2] == ["system", "init"]:
+        database_path = _database_path_for_state_root(state_root, config)
+        _build_governance_service(state_root=state_root, config=config)
         return _write_json(
             {
                 "command": "system init",
                 "storage_backend": config.storage_backend,
+                "database_path": str(database_path),
+                "state_root": str(state_root),
                 "external_execution_allowed": config.external_execution_allowed,
                 "adapters_enabled": config.adapters_enabled,
                 "adapter_status": "disabled",
@@ -186,12 +246,12 @@ def run_cli(argv: Optional[Sequence[str]] = None, *, output: Optional[IO[str]] =
         )
 
     if args[:2] == ["research", "import"]:
-        state = _build_phase4_state()
+        state = _build_phase4_state(state_root=state_root)
         ingested = state["ingested"]
         return _write_json(
             {
                 "command": "research import",
-                "record_id": ingested.record.id,
+                "record_id": ingested.duplicate_of or ingested.record.id,
                 "classification": ingested.record.classification.value,
                 "review_status": ingested.record.review_status.value,
                 "lifecycle": list(ingested.lifecycle),
@@ -201,8 +261,7 @@ def run_cli(argv: Optional[Sequence[str]] = None, *, output: Optional[IO[str]] =
         )
 
     if args[:2] == ["facts", "list"]:
-        state = _build_phase4_state()
-        governance = state["governance"]
+        governance = _build_governance_service(state_root=state_root, config=config)
         items = [
             {
                 "id": record.id,
@@ -215,9 +274,10 @@ def run_cli(argv: Optional[Sequence[str]] = None, *, output: Optional[IO[str]] =
         return _write_json({"command": "facts list", "items": items}, stream)
 
     if args[:2] == ["facts", "review"]:
-        state = _build_phase4_state()
-        governance = state["governance"]
-        approved = governance.approve_fact(state["ingested"].record.id, reviewed_by="human-reviewer-001")
+        if len(args) < 3:
+            return _write_json({"error": "fact_record_id_required", **_help_payload()}, stream)
+        governance = _build_governance_service(state_root=state_root, config=config)
+        approved = governance.approve_fact(args[2], reviewed_by="human-reviewer-001")
         return _write_json(
             {
                 "command": "facts review",
@@ -227,7 +287,7 @@ def run_cli(argv: Optional[Sequence[str]] = None, *, output: Optional[IO[str]] =
         )
 
     if args[:2] == ["demand", "list"]:
-        state = _build_phase4_state()
+        state = _build_phase4_state(state_root=state_root)
         signal = state["signal"]
         return _write_json(
             {
@@ -245,7 +305,7 @@ def run_cli(argv: Optional[Sequence[str]] = None, *, output: Optional[IO[str]] =
         )
 
     if args[:2] == ["products", "list"]:
-        product = _build_phase4_state()["product"]
+        product = _build_phase4_state(state_root=state_root)["product"]
         return _write_json(
             {
                 "command": "products list",
@@ -263,7 +323,7 @@ def run_cli(argv: Optional[Sequence[str]] = None, *, output: Optional[IO[str]] =
         )
 
     if args[:2] == ["content", "generate"]:
-        state = _build_phase4_state()
+        state = _build_phase4_state(state_root=state_root)
         return _write_json(
             {
                 "command": "content generate",

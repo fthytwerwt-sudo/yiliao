@@ -18,7 +18,8 @@
   `experiment create/review`、`weekly-review generate`、
   `decision candidate`、`sync github --dry-run`。
 - `interfaces/local_api.py`
-  提供只读、loopback-only 的本地接口壳层，不自动启动 server，只允许 `handle()` 调试读取。
+  提供只读、loopback-only 的本地接口应用对象：既支持 `handle()` 直接调试，
+  也支持 `create_server()` / `serve_forever()` 启动真实本地 HTTP server。
 - `workflows/e2e_scenario.py`
   负责 14 阶段 synthetic E2E，验证：
   Research → Fact → Demand → Product → Content → Comment/DM → Risk → Lead → Match
@@ -28,10 +29,11 @@
 
 - `external_execution_allowed = false`
 - `adapters_enabled = false`
-- Local API 绑定声明固定为 `127.0.0.1`
+- Local API 只允许绑定 `127.0.0.1`
 - GitHub sync 永远是 `dry_run = true`
 - Decision Candidate 的 `status` 固定为 `candidate`
 - `business_validation_completed` 固定为 `false`
+- Local API server 默认不自动启动，只有显式调用 `create_server()` / `serve_forever()` 才监听本地端口
 
 ## 明确边界
 
