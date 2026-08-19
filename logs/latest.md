@@ -1,6 +1,6 @@
 # 最新状态
 
-更新时间：2026-08-18。
+更新时间：2026-08-19。
 
 ## 已确认
 
@@ -10,14 +10,15 @@
 - 新的 ChatGPT Project 协作机制包已生成：`dist/gpt_project_sync_packages/2026-08-18_medical_project_collaboration_os_v2`。
 - 旧短摘要包已标记为 `DEPRECATED_SEMANTICALLY_INCOMPLETE_DO_NOT_UPLOAD`。
 - 旧业务事实型 Project 包继续保持 `DEPRECATED_DO_NOT_UPLOAD`。
+- 用户已锁定 `DEC-ENG-001`：允许在战略未锁定时建设 `strategy-agnostic system infrastructure`（战略无关系统基础设施）。这是 `engineering_scope_decision`，不构成业务战略锁定。
 
 ## 当前状态
 
-项目处于 strategy_definition_pending。尚无由用户与 ChatGPT 正式锁定的市场、客户、产品、商业模式、价格、验证顺序、正式门槛或 Go/No-Go。
+项目处于 strategy_definition_pending。尚无由用户与 ChatGPT 正式锁定的市场、客户、产品、商业模式、价格、验证顺序、正式门槛或 Go/No-Go。系统工程可使用模拟数据、测试、dry-run 和关闭状态的 Mock adapter 开发，但真实外部动作仍为 false。
 
 ## 当前唯一安全动作
 
-由用户与 ChatGPT 比较候选路线，锁定第一轮最小商业闭环和最低成本验证设计；在此之前 Codex 只可做结构化、只读研究、比较框架和已锁定机制执行。
+业务层仍由用户与 ChatGPT 比较候选路线，锁定第一轮最小商业闭环和最低成本验证设计；与此同时 Codex 可按 `DEC-ENG-001` 开发和验证不含业务事实的通用系统。任何 `technical implementation` 只代表本地工程实现和测试，不代表市场、医疗、合规或业务验证完成。
 
 ## 未确认
 

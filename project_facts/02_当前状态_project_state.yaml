@@ -1,7 +1,7 @@
 schema_version: 2
 project_id: chengdu_international_medical_tourism
 project_name: 成都国际医疗旅游项目
-state_as_of: "2026-08-18"
+state_as_of: "2026-08-19"
 
 stage:
   code: strategy_definition_pending
@@ -28,6 +28,12 @@ execution:
   external_execution_allowed: false
   strategy_execution_allowed: false
   blocked_if_strategy_not_locked: blocked_strategy_not_locked
+
+# DEC-ENG-001 只授权本地、可审计的系统工程；它不解锁任何业务战略或外部执行。
+engineering_scope:
+  architecture_development_allowed: true
+  business_strategy_locked: false
+  external_execution_allowed: false
 
 known_confirmed_absences:
   - no_confirmed_supplier_agreement
