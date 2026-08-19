@@ -15,10 +15,11 @@ SQLite 文件与 migration 脚本。
 from __future__ import annotations
 
 import sqlite3
+from json import dumps, loads
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from medical_tourism_os.domain.entities import FactRecord
+from medical_tourism_os.domain.entities import FactRecord, LifecycleEvent
 
 
 class SqliteStore:
@@ -143,3 +144,99 @@ class SqliteStore:
         if row is None:
             return None
         return dict(row)
+
+    def list_facts(self) -> List[Dict[str, Any]]:
+        """
+        作用：
+        列出当前所有事实记录，供去重、复核队列与安全导出复用。
+
+        输入：
+        无。
+
+        输出：
+        事实字段字典列表，按创建时间和 ID 稳定排序。
+
+        关键边界：
+        存储层只返回原始映射；过滤和业务判断留给仓库或服务层完成。
+        """
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    id, claim, source, source_date, scope, classification,
+                    confidence, freshness, conflict_status, review_status,
+                    reviewed_by, created_at, updated_at, provenance
+                FROM facts
+                ORDER BY created_at ASC, id ASC
+                """
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def save_lifecycle_event(self, event: LifecycleEvent) -> None:
+        """
+        作用：
+        保存一条生命周期事件，形成真实持久化的治理轨迹。
+
+        输入：
+        `LifecycleEvent`。
+
+        输出：
+        无。
+
+        关键边界：
+        这里持久化的是结构化、非敏感的阶段事实，而不是原始未审数据全文。
+        """
+
+        payload = event.to_dict()
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT OR REPLACE INTO lifecycle_events (
+                    id, record_id, stage, action, details_json, created_at
+                ) VALUES (
+                    :id, :record_id, :stage, :action, :details_json, :created_at
+                )
+                """,
+                {
+                    "id": payload["id"],
+                    "record_id": payload["record_id"],
+                    "stage": payload["stage"],
+                    "action": payload["action"],
+                    "details_json": dumps(payload["details"], ensure_ascii=False, sort_keys=True),
+                    "created_at": payload["created_at"],
+                },
+            )
+
+    def list_lifecycle_events(self, record_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        作用：
+        回读生命周期事件，供审计与测试验证。
+
+        输入：
+        可选 `record_id`；为空时返回全部事件。
+
+        输出：
+        事件字段字典列表。
+
+        关键边界：
+        事件详情以 JSON 文本存储；这里统一解码，避免上层重复处理序列化细节。
+        """
+
+        query = """
+            SELECT id, record_id, stage, action, details_json, created_at
+            FROM lifecycle_events
+        """
+        parameters: tuple[Any, ...] = ()
+        if record_id is not None:
+            query += " WHERE record_id = ?"
+            parameters = (record_id,)
+        query += " ORDER BY created_at ASC, id ASC"
+        with self._connect() as connection:
+            rows = connection.execute(query, parameters).fetchall()
+        events = []
+        for row in rows:
+            payload = dict(row)
+            payload["details"] = loads(payload.pop("details_json"))
+            events.append(payload)
+        return events

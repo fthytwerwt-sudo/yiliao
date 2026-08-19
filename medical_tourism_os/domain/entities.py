@@ -14,7 +14,7 @@ SQLite port、审计日志、Mock adapter 等基础设施通过这些 dataclass 
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
@@ -39,11 +39,40 @@ class FactClassification(str, Enum):
     一个稳定、可序列化的字符串枚举。
 
     关键边界：
-    Phase 1 只依赖候选与已确认两级，不允许跳过人工复核直接提升。
+    这里保留完整的治理语义，但自动化流程只能把 Research 输入推进到 `FACT_CANDIDATE`；
+    `CANONICAL_FACT` 与 `DECISION` 都不能由导入直接产生。
     """
 
+    RESEARCH = "RESEARCH"
     FACT_CANDIDATE = "FACT_CANDIDATE"
+    INFERENCE = "INFERENCE"
+    HYPOTHESIS = "HYPOTHESIS"
+    UNKNOWN = "UNKNOWN"
     CANONICAL_FACT = "CANONICAL_FACT"
+    DECISION = "DECISION"
+
+
+class LifecycleStage(str, Enum):
+    """
+    作用：
+    描述一条输入在数据治理链路中的所处阶段。
+
+    输入：
+    由导入治理服务或人工复核流程显式推进。
+
+    输出：
+    稳定字符串，便于审计与 SQLite 记录。
+
+    关键边界：
+    Phase 2 只允许自动推进到 `ADJUDICATED`；后续 `CANONICAL` 与 `DECISION`
+    需要额外人工 gate，不允许在导入时一步到位。
+    """
+
+    RAW = "RAW"
+    STAGING = "STAGING"
+    ADJUDICATED = "ADJUDICATED"
+    CANONICAL = "CANONICAL"
+    DECISION = "DECISION"
 
 
 class ReviewStatus(str, Enum):
@@ -138,6 +167,25 @@ class FactRecord:
             provenance=provenance,
         )
 
+    def with_updates(self, **changes: Any) -> "FactRecord":
+        """
+        作用：
+        基于当前记录生成一个带更新时间的新副本。
+
+        输入：
+        任何允许覆盖的字段。
+
+        输出：
+        新的 `FactRecord`。
+
+        关键边界：
+        领域记录是不可变对象；用副本替代原地修改，便于审计和未来事件回放。
+        """
+
+        payload = dict(changes)
+        payload.setdefault("updated_at", _utc_now_isoformat())
+        return replace(self, **payload)
+
     def to_dict(self) -> Dict[str, Any]:
         """
         作用：
@@ -216,6 +264,70 @@ class AuditEvent:
     outcome: str
     details: Dict[str, Any]
     recorded_at: str
+
+
+@dataclass(frozen=True)
+class LifecycleEvent:
+    """
+    作用：
+    记录事实在 Raw / Staging / Adjudicated / Canonical 等阶段的可审计轨迹。
+
+    输入：
+    记录 ID、阶段、动作名与已结构化的非敏感细节。
+
+    输出：
+    可被 SQLite 持久化和回读的领域事件。
+
+    关键边界：
+    这里保存的是治理轨迹，而不是原始敏感输入备份；任何可能携带敏感原文的内容
+    都必须在进入该对象前被清洗或拒绝。
+    """
+
+    id: str
+    record_id: str
+    stage: LifecycleStage
+    action: str
+    details: Dict[str, Any]
+    created_at: str
+
+    @classmethod
+    def new(
+        cls,
+        record_id: str,
+        stage: LifecycleStage,
+        action: str,
+        details: Dict[str, Any],
+    ) -> "LifecycleEvent":
+        """为当前阶段生成一条新的生命周期事件。"""
+
+        return cls(
+            id=f"lifecycle_{uuid4().hex}",
+            record_id=record_id,
+            stage=stage,
+            action=action,
+            details=details,
+            created_at=_utc_now_isoformat(),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """把生命周期事件转为可存储字典。"""
+
+        payload = asdict(self)
+        payload["stage"] = self.stage.value
+        return payload
+
+    @classmethod
+    def from_dict(cls, payload: Dict[str, Any]) -> "LifecycleEvent":
+        """从存储层字段恢复生命周期事件对象。"""
+
+        return cls(
+            id=str(payload["id"]),
+            record_id=str(payload["record_id"]),
+            stage=LifecycleStage(str(payload["stage"])),
+            action=str(payload["action"]),
+            details=dict(payload["details"]),
+            created_at=str(payload["created_at"]),
+        )
 
 
 @dataclass(frozen=True)

@@ -14,9 +14,9 @@ storage.contracts 中定义的 port 与具体 SQLite 实现。
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
-from medical_tourism_os.domain.entities import FactRecord
+from medical_tourism_os.domain.entities import FactRecord, LifecycleEvent
 from medical_tourism_os.storage.contracts import FactStoragePort
 
 
@@ -74,3 +74,78 @@ class FactRepository:
         if payload is None:
             return None
         return FactRecord.from_dict(payload)
+
+    def list(self) -> List[FactRecord]:
+        """
+        作用：
+        列出当前事实库中的全部记录。
+
+        输入：
+        无。
+
+        输出：
+        `FactRecord` 列表。
+
+        关键边界：
+        复核队列、去重和导出都需要稳定回读；统一在仓库完成对象重建。
+        """
+
+        return [FactRecord.from_dict(payload) for payload in self.store.list_facts()]
+
+    def list_pending_review(self) -> List[FactRecord]:
+        """
+        作用：
+        提供最小的事实复核队列。
+
+        输入：
+        无。
+
+        输出：
+        所有仍处于 `PENDING` 的事实候选列表。
+
+        关键边界：
+        这里不做业务裁决，只暴露人工必须处理的待办集合。
+        """
+
+        return [
+            record
+            for record in self.list()
+            if record.review_status.value == "PENDING"
+        ]
+
+    def save_lifecycle_event(self, event: LifecycleEvent) -> None:
+        """
+        作用：
+        保存事实生命周期事件。
+
+        输入：
+        `LifecycleEvent`。
+
+        输出：
+        无。
+
+        关键边界：
+        服务层通过仓库记录治理轨迹，而不是直接接触 SQL 表结构。
+        """
+
+        self.store.save_lifecycle_event(event)
+
+    def list_lifecycle_events(self, record_id: Optional[str] = None) -> List[LifecycleEvent]:
+        """
+        作用：
+        读取事实生命周期事件。
+
+        输入：
+        可选 `record_id`。
+
+        输出：
+        `LifecycleEvent` 列表。
+
+        关键边界：
+        统一在仓库层完成事件对象重建，保持上层接口一致。
+        """
+
+        return [
+            LifecycleEvent.from_dict(payload)
+            for payload in self.store.list_lifecycle_events(record_id=record_id)
+        ]

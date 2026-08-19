@@ -14,9 +14,9 @@ sqlite_store.py 与未来其他后端实现遵守同一协议。
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol
 
-from medical_tourism_os.domain.entities import FactRecord
+from medical_tourism_os.domain.entities import FactRecord, LifecycleEvent
 
 
 class FactStoragePort(Protocol):
@@ -42,3 +42,12 @@ class FactStoragePort(Protocol):
 
     def get_fact(self, record_id: str) -> Optional[Dict[str, Any]]:
         """按 ID 读取一条事实记录。"""
+
+    def list_facts(self) -> List[Dict[str, Any]]:
+        """列出当前事实表中的全部记录，供去重、复核队列和导出使用。"""
+
+    def save_lifecycle_event(self, event: LifecycleEvent) -> None:
+        """保存一条生命周期事件，形成 Raw/Staging/Adjudicated/Canonical 的真实轨迹。"""
+
+    def list_lifecycle_events(self, record_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """按可选 record_id 回读生命周期事件。"""
