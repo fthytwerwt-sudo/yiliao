@@ -16,9 +16,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import asdict
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from medical_tourism_os.domain.entities import AdapterResult
+from medical_tourism_os.domain.entities import AdapterResult, PermissionDecision
 
 
 class BaseAdapter(ABC):
@@ -40,8 +40,12 @@ class BaseAdapter(ABC):
         self.enabled = enabled
 
     @abstractmethod
-    def publish(self, payload: Dict[str, Any]) -> AdapterResult:
-        """执行或模拟一次发布动作。"""
+    def publish(
+        self,
+        payload: Dict[str, Any],
+        permission: Optional[PermissionDecision] = None,
+    ) -> AdapterResult:
+        """执行或模拟一次发布动作；必须显式提供权限裁决。"""
 
     @staticmethod
     def serialize_result(result: AdapterResult) -> Dict[str, Any]:

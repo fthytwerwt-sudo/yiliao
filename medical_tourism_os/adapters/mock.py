@@ -14,10 +14,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from medical_tourism_os.adapters.base import BaseAdapter
-from medical_tourism_os.domain.entities import AdapterResult
+from medical_tourism_os.domain.entities import AdapterResult, PermissionDecision
 
 
 class MockAdapter(BaseAdapter):
@@ -35,7 +35,11 @@ class MockAdapter(BaseAdapter):
     关闭状态必须显式返回 `adapter_disabled`，避免调用方误判为成功发布。
     """
 
-    def publish(self, payload: Dict[str, Any]) -> AdapterResult:
+    def publish(
+        self,
+        payload: Dict[str, Any],
+        permission: Optional[PermissionDecision] = None,
+    ) -> AdapterResult:
         """
         作用：
         处理一次 mock publish 调用。
@@ -47,22 +51,36 @@ class MockAdapter(BaseAdapter):
         `AdapterResult`。
 
         关键边界：
-        关闭时返回 dry-run；启用时也只做本地 mock 完成态，不产生真实外部动作。
+        关闭时返回 dry-run；即使 adapter 已启用，也必须先拿到显式允许的权限裁决。
         """
 
+        safe_payload = {
+            "payload_keys": sorted(str(key) for key in payload.keys()),
+        }
         if not self.enabled:
             return AdapterResult(
                 dry_run=True,
                 executed=False,
                 reason="adapter_disabled",
-                payload={"requested_payload": payload},
+                payload=safe_payload,
+            )
+        if permission is None:
+            return AdapterResult(
+                dry_run=True,
+                executed=False,
+                reason="permission_required",
+                payload=safe_payload,
+            )
+        if not permission.allowed:
+            return AdapterResult(
+                dry_run=True,
+                executed=False,
+                reason="permission_denied",
+                payload=safe_payload,
             )
         return AdapterResult(
             dry_run=False,
             executed=True,
             reason="mock_executed",
-            payload={
-                "requested_payload": payload,
-                "mock_reference": "mock-publication-001",
-            },
+            payload=dict(safe_payload, mock_reference="mock-publication-001"),
         )

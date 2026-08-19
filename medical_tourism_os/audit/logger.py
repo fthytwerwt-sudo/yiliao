@@ -19,8 +19,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from medical_tourism_os.config import SystemConfig
-from medical_tourism_os.domain.entities import AuditEvent
-from medical_tourism_os.domain.policies import redact_sensitive_payload
+from medical_tourism_os.domain.entities import AuditEvent, _utc_now_isoformat
+from medical_tourism_os.domain.policies import sanitize_audit_details
 
 
 class AuditLogger:
@@ -57,17 +57,14 @@ class AuditLogger:
         这里把敏感字段统一替换为 `[REDACTED]`，因为审计只需要知道“发生了什么”，不需要持有原文秘密。
         """
 
-        safe_details = redact_sensitive_payload(
+        safe_details = sanitize_audit_details(
             details, self.config.audit_redaction_markers
         )
         event = AuditEvent(
             action=action,
             outcome=outcome,
             details=safe_details,
-            recorded_at=__import__(
-                "medical_tourism_os.domain.entities",
-                fromlist=["_utc_now_isoformat"],
-            )._utc_now_isoformat(),
+            recorded_at=_utc_now_isoformat(),
         )
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as handle:

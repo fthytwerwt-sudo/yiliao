@@ -14,6 +14,7 @@ audit.logger、权限层与未来导入治理服务调用这里的纯规则。
 
 from __future__ import annotations
 
+import re
 from typing import Any, Iterable
 
 
@@ -27,6 +28,15 @@ DEFAULT_SENSITIVE_MARKERS = (
     "clinical",
     "medical",
 )
+
+SAFE_AUDIT_DETAIL_KEYS = (
+    "record_id",
+    "stage",
+    "reason",
+    "count",
+)
+
+_SAFE_AUDIT_STRING = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 
 
 def is_sensitive_key(key: str, markers: Iterable[str] = DEFAULT_SENSITIVE_MARKERS) -> bool:
@@ -67,15 +77,67 @@ def redact_sensitive_payload(
     """
 
     if isinstance(payload, dict):
-        redacted = {}
-        for key, value in payload.items():
-            if is_sensitive_key(str(key), markers):
-                redacted[key] = "[REDACTED]"
-            else:
-                redacted[key] = redact_sensitive_payload(value, markers)
-        return redacted
-    if isinstance(payload, list):
-        return [redact_sensitive_payload(item, markers) for item in payload]
-    if isinstance(payload, tuple):
-        return tuple(redact_sensitive_payload(item, markers) for item in payload)
-    return payload
+        return sanitize_audit_details(payload, markers)
+    if isinstance(payload, (list, tuple)):
+        return "[REDACTED]"
+    return "[REDACTED]"
+
+
+def sanitize_audit_details(
+    details: Any,
+    markers: Iterable[str] = DEFAULT_SENSITIVE_MARKERS,
+) -> Any:
+    """
+    作用：
+    只保留精确 allowlist 中的安全审计元数据，其余字段一律脱敏。
+
+    输入：
+    `details` 为审计详情对象；`markers` 为敏感关键词集合。
+
+    输出：
+    与原字典同 key 结构的安全副本；仅 allowlist 安全元数据保留原值。
+
+    关键边界：
+    审计不是原始数据备份。任何自由文本、嵌套对象、列表或未列入 allowlist 的字段都不能原文落盘。
+    """
+
+    if not isinstance(details, dict):
+        return "[REDACTED]"
+
+    sanitized = {}
+    for key, value in details.items():
+        normalized_key = str(key).strip().lower()
+        if is_sensitive_key(normalized_key, markers):
+            sanitized[key] = "[REDACTED]"
+            continue
+        if normalized_key not in SAFE_AUDIT_DETAIL_KEYS:
+            sanitized[key] = "[REDACTED]"
+            continue
+        sanitized[key] = _sanitize_allowed_audit_value(normalized_key, value)
+    return sanitized
+
+
+def _sanitize_allowed_audit_value(key: str, value: Any) -> Any:
+    """
+    作用：
+    校验 allowlist 审计字段的值是否仍属于安全元数据。
+
+    输入：
+    `key` 为 allowlist 字段名；`value` 为其候选值。
+
+    输出：
+    安全值本身或 `[REDACTED]`。
+
+    关键边界：
+    即使字段名安全，也不能接受任意自由文本；否则调用方可借 allowlist 把敏感内容伪装成 reason 或 stage。
+    """
+
+    if key == "count":
+        if isinstance(value, bool):
+            return "[REDACTED]"
+        if isinstance(value, int):
+            return value
+        return "[REDACTED]"
+    if isinstance(value, str) and _SAFE_AUDIT_STRING.fullmatch(value):
+        return value
+    return "[REDACTED]"

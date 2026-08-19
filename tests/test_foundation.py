@@ -10,6 +10,7 @@ from medical_tourism_os.config import SystemConfig
 from medical_tourism_os.domain.entities import (
     FactClassification,
     FactRecord,
+    PermissionDecision,
     ReviewStatus,
 )
 from medical_tourism_os.permissions.policy import PermissionPolicy
@@ -61,6 +62,48 @@ class FoundationTests(unittest.TestCase):
         self.assertFalse(result.executed)
         self.assertEqual("adapter_disabled", result.reason)
 
+    def test_mock_adapter_requires_explicit_permission_even_when_enabled(self) -> None:
+        """开启 mock adapter 不等于获得权限，缺审批时必须继续 dry-run。"""
+        adapter = MockAdapter(enabled=True)
+
+        missing_permission = adapter.publish({"content_id": "synthetic-content-001"})
+        denied_permission = adapter.publish(
+            {"content_id": "synthetic-content-001"},
+            permission=PermissionDecision(allowed=False, reason="external_execution_disabled"),
+        )
+        approved_permission = adapter.publish(
+            {"content_id": "synthetic-content-001"},
+            permission=PermissionDecision(allowed=True, reason="allowed"),
+        )
+
+        self.assertTrue(missing_permission.dry_run)
+        self.assertFalse(missing_permission.executed)
+        self.assertEqual("permission_required", missing_permission.reason)
+
+        self.assertTrue(denied_permission.dry_run)
+        self.assertFalse(denied_permission.executed)
+        self.assertEqual("permission_denied", denied_permission.reason)
+
+        self.assertFalse(approved_permission.dry_run)
+        self.assertTrue(approved_permission.executed)
+        self.assertEqual("mock_executed", approved_permission.reason)
+
+    def test_mock_adapter_cannot_bypass_default_policy_denial(self) -> None:
+        """即使 adapter 本身 enabled，默认权限拒绝也必须阻止执行。"""
+        adapter = MockAdapter(enabled=True)
+        policy = PermissionPolicy(SystemConfig.default())
+
+        permission = policy.check_external_action("publish", adapter_enabled=True)
+        result = adapter.publish(
+            {"content_id": "synthetic-content-001"},
+            permission=permission,
+        )
+
+        self.assertFalse(permission.allowed)
+        self.assertTrue(result.dry_run)
+        self.assertFalse(result.executed)
+        self.assertEqual("permission_denied", result.reason)
+
     def test_permission_policy_denies_external_execution_by_default(self) -> None:
         """权限层是外部动作的第二道门，不能只依赖调用者自觉。"""
         policy = PermissionPolicy(SystemConfig.default())
@@ -77,14 +120,43 @@ class FoundationTests(unittest.TestCase):
             event = logger.record(
                 action="import_rejected",
                 outcome="blocked",
-                details={"patient_name": "should-not-persist", "api_token": "secret-value"},
+                details={
+                    "record_id": "fact_001",
+                    "stage": "staging",
+                    "reason": "sensitive_input_detected",
+                    "count": 2,
+                    "patient_name": "should-not-persist",
+                    "name": "Alice",
+                    "email": "alice@example.com",
+                    "phone": "+1-555-0100",
+                    "password": "super-secret",
+                    "authorization": "Bearer secret-token",
+                    "notes": "token=abc",
+                    "context": {"raw_text": "patient detail should never persist"},
+                    "items": ["safe-looking", {"raw_text": "nested token=abc"}],
+                },
             )
             persisted = (Path(directory) / "audit.jsonl").read_text(encoding="utf-8")
 
         self.assertEqual("blocked", event.outcome)
+        self.assertEqual("fact_001", event.details["record_id"])
+        self.assertEqual("staging", event.details["stage"])
+        self.assertEqual("sensitive_input_detected", event.details["reason"])
+        self.assertEqual(2, event.details["count"])
+        self.assertEqual("[REDACTED]", event.details["name"])
+        self.assertEqual("[REDACTED]", event.details["notes"])
+        self.assertEqual("[REDACTED]", event.details["context"])
+        self.assertEqual("[REDACTED]", event.details["items"])
         self.assertNotIn("should-not-persist", persisted)
-        self.assertNotIn("secret-value", persisted)
+        self.assertNotIn("Alice", persisted)
+        self.assertNotIn("alice@example.com", persisted)
+        self.assertNotIn("+1-555-0100", persisted)
+        self.assertNotIn("super-secret", persisted)
+        self.assertNotIn("Bearer secret-token", persisted)
+        self.assertNotIn("token=abc", persisted)
+        self.assertNotIn("patient detail should never persist", persisted)
         self.assertIn("[REDACTED]", persisted)
+        self.assertIn("fact_001", persisted)
 
 
 if __name__ == "__main__":
