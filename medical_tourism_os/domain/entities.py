@@ -342,3 +342,220 @@ class AdapterResult:
     executed: bool
     reason: str
     payload: Dict[str, Any]
+
+
+@dataclass(frozen=True)
+class DemandSignal:
+    """
+    作用：
+    表示一条尚未被升级为正式事实的需求信号。
+
+    输入：
+    市场标识、通用主题、证据 ID、分类与可选维度。
+
+    输出：
+    供 Demand Radar 聚类和人工研判的结构化对象。
+
+    关键边界：
+    这里保存的是需求信号，不是 canonical fact；`classification` 只能表达来源性质，
+    不能把 Research/Hypothesis 自动说成已确认事实。
+    """
+
+    id: str
+    market: str
+    theme: str
+    cluster_key: str
+    evidence_ids: tuple[str, ...]
+    classification: FactClassification
+    dimensions: tuple[str, ...]
+    created_at: str
+
+
+@dataclass(frozen=True)
+class DemandCluster:
+    """
+    作用：
+    表示按通用主题/维度聚合后的需求簇。
+
+    输入：
+    同一 cluster_key 下的多个需求信号。
+
+    输出：
+    一个可排序、可审查的聚类结果。
+
+    关键边界：
+    聚类只是帮助看趋势；输出里保留 evidence_ids 和 classifications，
+    防止未来调用者把“多个研究信号”误解成“已确认市场事实”。
+    """
+
+    cluster_key: str
+    market: str
+    theme: str
+    dimensions: tuple[str, ...]
+    signal_ids: tuple[str, ...]
+    evidence_ids: tuple[str, ...]
+    classifications: tuple[FactClassification, ...]
+    signal_count: int
+
+
+@dataclass(frozen=True)
+class ProductCandidate:
+    """
+    作用：
+    描述一个待验证的产品候选，而非正式报价或医疗方案。
+
+    输入：
+    候选编码、目标分群、价值假设、依赖条件、供给/价格证据与风险。
+
+    输出：
+    供匹配器和人工复核使用的候选对象。
+
+    关键边界：
+    `status` 固定为 `hypothesis`，即使存在价格证据也不能被当作正式 offer。
+    """
+
+    code: str
+    target_segment: str
+    value_hypothesis: str
+    requirements: tuple[str, ...]
+    supply_evidence_ids: tuple[str, ...]
+    price_evidence_ids: tuple[str, ...]
+    risks: tuple[str, ...]
+    status: str
+    created_at: str
+
+
+@dataclass(frozen=True)
+class RiskRouteDecision:
+    """
+    作用：
+    表示高风险文本在进入业务核心前的路由结果。
+
+    输入：
+    风险分类、阻断动作与脱敏后的安全摘要。
+
+    输出：
+    供工作流、权限与审计使用的最小安全风险结果。
+
+    关键边界：
+    这里故意不保存原始高风险文本；audit/details 只能拿 `safe_summary`。
+    """
+
+    blocked: bool
+    category: str
+    action: str
+    safe_summary: Dict[str, Any]
+    matched_terms: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class AnonymousLead:
+    """
+    作用：
+    表示经过风险前置筛选后形成的匿名候选线索。
+
+    输入：
+    匿名 lead id、联系引用、来源、同意状态和下一步动作。
+
+    输出：
+    可供 CRM 候选层保存的最小非敏感对象。
+
+    关键边界：
+    这里不包含 patient、diagnosis、clinical record 等敏感字段；
+    任何需要医学判断的内容都不能进入该对象。
+    """
+
+    anonymous_lead_id: str
+    contact_reference: str
+    source: str
+    status: str
+    consent_status: str
+    next_action: str
+    created_at: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        """返回匿名 lead 的最小安全字典视图。"""
+
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class LeadScoreCard:
+    """
+    作用：
+    表示匿名线索的配置化评分结果。
+
+    输入：
+    匿名 lead 标识、来源、同意状态、分数与动作建议。
+
+    输出：
+    可序列化的评分卡对象。
+
+    关键边界：
+    输出只保留非敏感运营字段，避免评分过程反向变成患者信息容器。
+    """
+
+    anonymous_lead_id: str
+    contact_reference: str
+    source: str
+    status: str
+    consent_status: str
+    next_action: str
+    score: int
+    band: str
+    reason_codes: tuple[str, ...]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """返回不含敏感字段的评分卡字典。"""
+
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class ProductMatch:
+    """
+    作用：
+    表示一个非临床候选匹配结果。
+
+    输入：
+    候选产品、证据状态、满足条件与安全边界。
+
+    输出：
+    给人工初筛使用的 candidate match。
+
+    关键边界：
+    `safety_boundary` 固定提醒它不是医疗建议；风险信号或证据不足时不应产生此对象。
+    """
+
+    product_code: str
+    target_segment: str
+    status: str
+    safety_boundary: str
+    evidence_status: str
+    matched_requirements: tuple[str, ...]
+    missing_requirements: tuple[str, ...]
+    reason_codes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class WorkflowResult:
+    """
+    作用：
+    汇总一次 inbound 处理的结果。
+
+    输入：
+    风险路由结果、是否阻断与可选匿名 lead/评分卡。
+
+    输出：
+    供测试或未来接口层返回的稳定 dataclass。
+
+    关键边界：
+    blocked 时 `lead` 必须为空，避免风险文本先落 CRM 再补救。
+    """
+
+    blocked: bool
+    category: str
+    action: str
+    lead: Optional[AnonymousLead]
+    scorecard: Optional[LeadScoreCard]
+    safe_summary: Dict[str, Any]
