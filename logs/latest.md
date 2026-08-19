@@ -11,10 +11,20 @@
 - 旧短摘要包已标记为 `DEPRECATED_SEMANTICALLY_INCOMPLETE_DO_NOT_UPLOAD`。
 - 旧业务事实型 Project 包继续保持 `DEPRECATED_DO_NOT_UPLOAD`。
 - 用户已锁定 `DEC-ENG-001`：允许在战略未锁定时建设 `strategy-agnostic system infrastructure`（战略无关系统基础设施）。这是 `engineering_scope_decision`，不构成业务战略锁定。
+- `medical_tourism_os/` 已补齐 Phase 5–7：learning loop、loopback-only local API、CLI 和 synthetic E2E。
+- `sync github --dry-run`、Decision Candidate、weekly review、本地接口路由和静态 hardcoding scan 已有自动化测试覆盖。
 
 ## 当前状态
 
 项目处于 strategy_definition_pending。尚无由用户与 ChatGPT 正式锁定的市场、客户、产品、商业模式、价格、验证顺序、正式门槛或 Go/No-Go。系统工程可使用模拟数据、测试、dry-run 和关闭状态的 Mock adapter 开发，但真实外部动作仍为 false。
+
+当前技术状态：
+
+- external adapters：Mock / disabled。
+- Local API：只读调试壳层，只绑定 `127.0.0.1`，不自动启动。
+- GitHub sync：永远 dry-run，不执行真实同步。
+- synthetic E2E：可跑完整 14 阶段，但终点只到 `Decision Candidate + GitHub Dry Run`。
+- `business_validation_completed = false`：技术闭环可用，不等于业务验证完成。
 
 ## 当前唯一安全动作
 

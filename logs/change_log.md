@@ -8,5 +8,6 @@
 | 2026-08-18 | 包废弃 | 第一版短摘要 Project 包改为 `DEPRECATED_SEMANTICALLY_INCOMPLETE_DO_NOT_UPLOAD` | 已本地标记 |
 | 2026-08-18 | 协作机制级重构 | 研究候选、动态事实、候选剧本与长期协作机制重新分层 | 已提交过上一轮基线 |
 | 2026-08-19 | engineering_scope_decision | `DEC-ENG-001` 允许战略无关系统基础设施开发；业务战略仍未锁定，真实外部动作继续关闭 | 已确认，待本轮技术实现与远端回读 |
+| 2026-08-19 | Phase 5–7 系统开发 | 新增 learning loop、weekly review、decision candidate、CLI、本地 loopback-only API、synthetic E2E 与静态 hardcoding scan | 本地自动化验证通过，待远端回读 |
 
 本日志只记录机制和同步状态；不产生市场、产品、价格、验证顺序或 Go/No-Go 决策。

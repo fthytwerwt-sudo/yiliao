@@ -7,8 +7,18 @@
 - 项目存在、两份基础研究资料和协作机制均已确认。
 - 市场、首发客户、产品、商业模式、价格、最小闭环、验证顺序、Go/No-Go 均尚未最终锁定。
 - 当前阶段：strategy_definition_pending。
+- `DEC-ENG-001` 已允许战略无关系统基础设施继续开发，但这不构成业务战略锁定。
 - 当前唯一工作目标：由用户与 ChatGPT 锁定第一轮最小商业闭环和最低成本验证路径。
 - Codex 不得从研究资料自行选择路线；缺锁定战略时返回 blocked_strategy_not_locked。
+
+## 当前技术实现状态
+
+- `medical_tourism_os/` 已覆盖 Phase 1–7 的离线系统骨架：
+  数据治理、风险路由、候选需求/产品/内容、学习闭环、CLI、本地 API、synthetic E2E。
+- 所有外部 adapter 仍为 Mock / disabled。
+- GitHub sync 仅支持 dry-run 预览，不执行真实同步。
+- Local API 仅声明绑定 `127.0.0.1`，不自动启动 server。
+- 当前测试通过只说明技术合同成立，不说明市场、业务、医疗、合规或商业验证完成。
 
 ## Canonical 入口
 

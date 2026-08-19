@@ -29,6 +29,14 @@ from medical_tourism_os.services.content_interaction import (
     PublishingQueue,
 )
 from medical_tourism_os.services.data_governance import DataGovernanceService, ReviewGateError
+from medical_tourism_os.services.learning_loop import (
+    DecisionCandidate,
+    Experiment,
+    ExperimentReview,
+    LearningLoopService,
+    MetricRecord,
+    WeeklyReview,
+)
 from medical_tourism_os.services.risk_router import RiskRouter
 
 __all__ = [
@@ -40,11 +48,17 @@ __all__ = [
     "DirectMessageIntake",
     "DraftStore",
     "HumanReviewCoordinator",
+    "LearningLoopService",
     "LeadScorer",
+    "DecisionCandidate",
+    "Experiment",
+    "ExperimentReview",
+    "MetricRecord",
     "ProductCatalog",
     "ProductMatcher",
     "PublishingQueue",
     "ReviewGateError",
     "RiskRouter",
+    "WeeklyReview",
     "build_anonymous_lead",
 ]
