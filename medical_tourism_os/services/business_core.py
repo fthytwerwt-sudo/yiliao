@@ -16,6 +16,7 @@ workflow、测试和未来本地 API 把已脱敏的非临床输入交给这里�
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 import re
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence
 from uuid import uuid4
@@ -36,6 +37,114 @@ def _normalize_phrase(value: str) -> str:
     """统一短语格式，确保聚类与匹配不受大小写和多空格干扰。"""
 
     return " ".join(value.strip().lower().split())
+
+
+_UNSAFE_OFFER_OR_CLINICAL_PATTERNS = (
+    re.compile(r"\bguarantee\b"),
+    re.compile(r"\bcure\b"),
+    re.compile(r"(?<!non-)\bclinical\b"),
+    re.compile(r"\bdiagnos"),
+    re.compile(r"\btreatment\b"),
+    re.compile(r"\bmedication\b"),
+    re.compile(r"保证"),
+    re.compile(r"治愈"),
+    re.compile(r"临床"),
+    re.compile(r"诊断"),
+    re.compile(r"治疗"),
+    re.compile(r"用药"),
+)
+_CONTACT_VALUE_PATTERNS = (
+    re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE),
+    re.compile(r"\+?\d[\d\s-]{7,}\d"),
+    re.compile(r"\bwechat\b", re.IGNORECASE),
+    re.compile(r"\bwhatsapp\b", re.IGNORECASE),
+    re.compile(r"微信"),
+    re.compile(r"邮箱"),
+    re.compile(r"电话"),
+    re.compile(r"手机"),
+    re.compile(r"护照"),
+    re.compile(r"passport", re.IGNORECASE),
+    re.compile(r"身份证"),
+    re.compile(r"\bid\b", re.IGNORECASE),
+)
+_SAFE_CHANNEL_CODE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]{2,63}$")
+_SAFE_OPAQUE_REFERENCE_PATTERN = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
+
+
+def _ensure_non_clinical_text(*, field_name: str, value: str) -> str:
+    """
+    作用：
+    拒绝任何带临床判断或结果保证措辞的自由文本。
+
+    输入：
+    字段名和原始字符串。
+
+    输出：
+    清理后的原始字符串。
+
+    关键边界：
+    这些字段后续会进入候选库或匹配链路，因此必须先 fail-closed，
+    避免“只是候选文本”逐步演化成医疗承诺。
+    """
+
+    normalized = value.strip()
+    lowered = normalized.lower()
+    for pattern in _UNSAFE_OFFER_OR_CLINICAL_PATTERNS:
+        if pattern.search(lowered) or pattern.search(normalized):
+            raise ValueError(f"{field_name}_contains_clinical_or_guarantee_language")
+    return normalized
+
+
+def tokenize_contact_reference(contact_reference: str) -> str:
+    """
+    作用：
+    把已确认安全的 opaque reference 变成不可逆 token。
+
+    输入：
+    不含邮箱/电话/证件/IM handle 的中性引用码。
+
+    输出：
+    `contact_ref_` 前缀的哈希 token。
+
+    关键边界：
+    即使上游给了“看起来安全”的引用，也不直接保存原文，防止未来与外部系统拼接后反推个人身份。
+    """
+
+    normalized = contact_reference.strip()
+    if not normalized:
+        raise ValueError("contact_reference_required")
+    if any(pattern.search(normalized) for pattern in _CONTACT_VALUE_PATTERNS):
+        raise ValueError("contact_reference_contains_pii")
+    if not _SAFE_OPAQUE_REFERENCE_PATTERN.fullmatch(normalized):
+        raise ValueError("contact_reference_must_be_safe_opaque_code")
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:20]
+    return f"contact_ref_{digest}"
+
+
+def validate_source_channel_code(source: str) -> str:
+    """
+    作用：
+    约束 Phase 3 只保存受限安全 channel code，而不是外部账号句柄。
+
+    输入：
+    上游传入的 source。
+
+    输出：
+    合法的 channel code。
+
+    关键边界：
+    这里要求 source 是受限代码格式，是因为 raw chat ID / handle 一旦进入 lead，
+    会绕过风险路由成为另一条 PII 泄漏通道。
+    """
+
+    normalized = source.strip()
+    if not normalized:
+        raise ValueError("source_required")
+    if any(pattern.search(normalized) for pattern in _CONTACT_VALUE_PATTERNS):
+        raise ValueError("source_contains_contact_value")
+    if not _SAFE_CHANNEL_CODE_PATTERN.fullmatch(normalized):
+        raise ValueError("source_must_be_safe_channel_code")
+    return normalized
 
 
 def _normalize_tokens(value: str) -> tuple[str, ...]:
@@ -213,8 +322,14 @@ class ProductCatalog:
 
         candidate = ProductCandidate(
             code=code.strip(),
-            target_segment=target_segment.strip(),
-            value_hypothesis=value_hypothesis.strip(),
+            target_segment=_ensure_non_clinical_text(
+                field_name="target_segment",
+                value=target_segment,
+            ),
+            value_hypothesis=_ensure_non_clinical_text(
+                field_name="value_hypothesis",
+                value=value_hypothesis,
+            ),
             requirements=tuple(item.strip() for item in requirements if item.strip()),
             supply_evidence_ids=tuple(item.strip() for item in supply_evidence_ids if item.strip()),
             price_evidence_ids=tuple(item.strip() for item in price_evidence_ids if item.strip()),
@@ -387,6 +502,10 @@ class ProductMatcher:
         """执行非临床候选匹配。"""
 
         normalized_goal = _normalize_phrase(non_clinical_goal)
+        _ensure_non_clinical_text(
+            field_name="non_clinical_goal",
+            value=non_clinical_goal,
+        )
         input_signals = self._build_input_signals(
             region=region,
             time_window=time_window,
@@ -520,13 +639,15 @@ def build_anonymous_lead(
     """
 
     normalized_consent = _normalize_phrase(consent_status or "unknown")
+    safe_contact_reference = tokenize_contact_reference(contact_reference)
+    safe_source = validate_source_channel_code(source)
     next_action = "manual_consent_check"
     if normalized_consent in {"granted", "provided", "yes"}:
         next_action = "human_review_queue"
     return AnonymousLead(
         anonymous_lead_id=f"lead_{uuid4().hex}",
-        contact_reference=contact_reference.strip(),
-        source=source.strip(),
+        contact_reference=safe_contact_reference,
+        source=safe_source,
         status="anonymous",
         consent_status=normalized_consent,
         next_action=next_action,

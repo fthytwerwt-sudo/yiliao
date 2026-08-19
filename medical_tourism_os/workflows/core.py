@@ -79,11 +79,30 @@ class InboundWorkflow:
                 safe_summary=risk_decision.safe_summary,
             )
 
-        lead = build_anonymous_lead(
-            contact_reference=contact_reference,
-            source=source,
-            consent_status=consent_status,
-        )
+        try:
+            lead = build_anonymous_lead(
+                contact_reference=contact_reference,
+                source=source,
+                consent_status=consent_status,
+            )
+        except ValueError as exc:
+            # contact_reference/source 是另一条可能绕过正文风险路由的输入通道；
+            # 一旦发现像邮箱、电话、handle 或非受限 channel code，必须直接阻断。
+            safe_summary = dict(risk_decision.safe_summary)
+            safe_summary.update(
+                {
+                    "blocked_field": "contact_or_source",
+                    "reason_code": str(exc),
+                }
+            )
+            return WorkflowResult(
+                blocked=True,
+                category="privacy",
+                action="fail_closed",
+                lead=None,
+                scorecard=None,
+                safe_summary=safe_summary,
+            )
         scorecard = None
         if self.lead_scorer is not None:
             # 评分读取的是匿名 lead 结果和通用运营字段，而不是原始自由文本。
