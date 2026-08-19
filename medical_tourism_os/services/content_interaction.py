@@ -32,7 +32,6 @@ from medical_tourism_os.domain.entities import (
     WorkflowResult,
     _utc_now_isoformat,
 )
-from medical_tourism_os.permissions.policy import PermissionPolicy
 from medical_tourism_os.services.business_core import _ensure_non_clinical_text
 from medical_tourism_os.services.risk_router import RiskRouter
 from medical_tourism_os.workflows.core import InboundWorkflow
@@ -44,11 +43,17 @@ _CONTENT_TYPES = (
     "seo_brief",
     "reply_candidate",
 )
-_DRAFT_REGISTRY: Dict[str, ContentDraft] = {}
 _ALLOWED_QUEUE_TRANSITIONS = {
     "draft": "review",
     "review": "approved",
     "approved": "queued",
+}
+_ALLOWED_CONTENT_CLASSIFICATIONS = {
+    FactClassification.RESEARCH,
+    FactClassification.FACT_CANDIDATE,
+    FactClassification.INFERENCE,
+    FactClassification.HYPOTHESIS,
+    FactClassification.UNKNOWN,
 }
 
 
@@ -114,20 +119,39 @@ def _ensure_safe_payload(value: Any, *, path: str) -> Any:
     return value
 
 
-def _register_draft(draft: ContentDraft) -> ContentDraft:
-    """把草稿放进模块级注册表，供后续 PublishingQueue 仅凭 id 回读。"""
+class DraftStore:
+    """
+    作用：
+    保存一个 Phase 4 会话内创建的内容草稿。
 
-    _DRAFT_REGISTRY[draft.id] = draft
-    return draft
+    输入：
+    `ContentDraft` 与 draft id。
 
+    输出：
+    由同一实例内的工厂和发布队列共享的草稿视图。
 
-def _require_registered_draft(draft_id: str) -> ContentDraft:
-    """按 id 取回已生成草稿；未知 id 必须显式报错。"""
+    关键边界：
+    这里必须是实例级 store，而不是模块全局注册表。
+    原因：Phase 4 还没有正式仓储层；若使用全局内存，会让不同测试、不同 queue、
+    不同未来会话彼此污染，等价于把“未审草稿”错误提升为全局可见事实。
+    """
 
-    try:
-        return _DRAFT_REGISTRY[draft_id]
-    except KeyError as exc:
-        raise KeyError("content_draft_not_found") from exc
+    def __init__(self) -> None:
+        self._drafts: Dict[str, ContentDraft] = {}
+
+    def save(self, draft: ContentDraft) -> ContentDraft:
+        """保存或覆盖当前 store 中的草稿。"""
+
+        self._drafts[draft.id] = draft
+        return draft
+
+    def get(self, draft_id: str) -> ContentDraft:
+        """按 id 读取当前 store 中的草稿。"""
+
+        try:
+            return self._drafts[draft_id]
+        except KeyError as exc:
+            raise KeyError("content_draft_not_found") from exc
 
 
 class ContentIntelligence:
@@ -158,6 +182,7 @@ class ContentIntelligence:
         normalized_experiment_id = experiment_id.strip()
         if not normalized_experiment_id:
             raise ValueError("experiment_id_required")
+        self._validate_candidate_input_classification(demand_signal.classification)
 
         normalized_theme = _ensure_safe_text("demand_theme", demand_signal.theme)
         target_segment = _ensure_safe_text("target_segment", product.target_segment)
@@ -170,7 +195,6 @@ class ContentIntelligence:
             product.price_evidence_ids,
         )
         evidence_status = self._evidence_status(
-            classification=demand_signal.classification,
             candidate_evidence_ids=candidate_evidence_ids,
         )
         return ContentBrief(
@@ -189,17 +213,23 @@ class ContentIntelligence:
             created_at=_utc_now_isoformat(),
         )
 
-    def _evidence_status(
-        self,
-        *,
-        classification: FactClassification,
-        candidate_evidence_ids: tuple[str, ...],
-    ) -> str:
-        if classification == FactClassification.CANONICAL_FACT and candidate_evidence_ids:
-            return "canonical"
+    def _evidence_status(self, *, candidate_evidence_ids: tuple[str, ...]) -> str:
         if candidate_evidence_ids:
             return "candidate"
         return "pending"
+
+    def _validate_candidate_input_classification(self, classification: FactClassification) -> None:
+        """
+        作用：
+        拒绝一切已经被系统定义为“高于候选层”的事实等级进入内容生产。
+
+        关键边界：
+        Phase 4 只是 candidate content。若把 canonical/decision 输入直接放进内容层，
+        brief 上再写 `candidate` 也只是自欺欺人，会让下游误以为这是一条已批准的外发依据。
+        """
+
+        if classification not in _ALLOWED_CONTENT_CLASSIFICATIONS:
+            raise ValueError("content_candidate_inputs_only")
 
 
 class ContentFactory:
@@ -217,6 +247,9 @@ class ContentFactory:
     所有输出固定为 `draft`，且 `publication_id` 必须为空；这里只做内容草稿，
     不产生任何真实发布动作。
     """
+
+    def __init__(self, *, store: Optional[DraftStore] = None) -> None:
+        self.store = store or DraftStore()
 
     def generate_drafts(self, brief: ContentBrief) -> List[ContentDraft]:
         """为一个 brief 生成 Phase 4 所需的五类草稿。"""
@@ -249,7 +282,7 @@ class ContentFactory:
                 created_at=_utc_now_isoformat(),
                 updated_at=_utc_now_isoformat(),
             )
-            drafts.append(_register_draft(draft))
+            drafts.append(self.store.save(draft))
         return drafts
 
     def _video_script(self, brief: ContentBrief) -> Dict[str, Any]:
@@ -354,23 +387,24 @@ class PublishingQueue:
 
     关键边界：
     这里只允许 `draft -> review -> approved -> queued`；
-    任何真实 publish 尝试都必须先过 PermissionPolicy，再调用 adapter。
+    `attempt_publish()` 在 Phase 4 永远是 dry-run，占位验证队列状态，但不触发真实发布。
     """
 
     def __init__(
         self,
         *,
+        store: Optional[DraftStore] = None,
         adapter: Optional[BaseAdapter] = None,
         config: Optional[SystemConfig] = None,
     ) -> None:
+        self.store = store or DraftStore()
         self.adapter = adapter or MockAdapter(enabled=False)
         self.config = config or SystemConfig.default()
-        self.permission_policy = PermissionPolicy(self.config)
 
     def get(self, draft_id: str) -> ContentDraft:
         """返回当前草稿状态。"""
 
-        return _require_registered_draft(draft_id)
+        return self.store.get(draft_id)
 
     def submit_for_review(self, draft_id: str) -> ContentDraft:
         """把草稿推进到 review。"""
@@ -391,8 +425,7 @@ class PublishingQueue:
             raise ValueError("named_human_reviewer_required")
         draft = self._transition(draft_id, expected="review", target="approved")
         updated = draft.with_updates(reviewed_by=reviewer_name)
-        _register_draft(updated)
-        return updated
+        return self.store.save(updated)
 
     def enqueue(self, draft_id: str) -> ContentDraft:
         """把已批准草稿推进到 queued，等待显式 publish 尝试。"""
@@ -415,43 +448,31 @@ class PublishingQueue:
         草稿仍保留在 `queued`，不能伪装成已发布。
         """
 
-        draft = _require_registered_draft(draft_id)
+        draft = self.store.get(draft_id)
         if draft.status != "queued":
             raise ValueError("publish_requires_queued_status")
 
-        permission = self.permission_policy.check_external_action(
-            "publish",
-            adapter_enabled=self.adapter.enabled,
-            risk_blocked=False,
+        # Phase 4 的 publish 仍是制度化 dry-run：即使调用者把 config 和 adapter 人为打开，
+        # 也不能真的触发 adapter 分支。原因是当前阶段只允许验证“队列是否准备好”，
+        # 不允许验证“真实对外发布是否成功”，否则会把未获授权的未来能力提前变成当前行为。
+        return AdapterResult(
+            dry_run=True,
+            executed=False,
+            reason="phase4_publish_dry_run_only",
+            payload={
+                "draft_id": draft.id,
+                "content_type": draft.content_type,
+                "status": draft.status,
+            },
         )
-        result = self.adapter.publish(self._publish_payload(draft), permission=permission)
-
-        # 只有 permission + adapter 都明确放行且 adapter 真正执行后，才允许进入 published。
-        # 这里故意不提供任何“直接跳 published”的公共入口，避免调用方绕开人审与权限 gate。
-        if result.executed:
-            publication_id = str(result.payload.get("mock_reference") or f"mock-publication-{draft.id}")
-            updated = draft.with_updates(status="published", publication_id=publication_id)
-            _register_draft(updated)
-        return result
 
     def _transition(self, draft_id: str, *, expected: str, target: str) -> ContentDraft:
-        draft = _require_registered_draft(draft_id)
+        draft = self.store.get(draft_id)
         allowed_target = _ALLOWED_QUEUE_TRANSITIONS.get(draft.status)
         if draft.status != expected or allowed_target != target:
             raise ValueError("invalid_status_transition")
         updated = draft.with_updates(status=target)
-        _register_draft(updated)
-        return updated
-
-    def _publish_payload(self, draft: ContentDraft) -> Dict[str, Any]:
-        return {
-            "draft_id": draft.id,
-            "content_type": draft.content_type,
-            "brief_id": draft.brief_id,
-            "evidence_status": draft.evidence_status,
-            "fact_refs": draft.fact_refs,
-            "title": draft.title,
-        }
+        return self.store.save(updated)
 
 
 class CommentIntake:

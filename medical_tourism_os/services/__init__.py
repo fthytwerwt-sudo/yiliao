@@ -25,6 +25,7 @@ from medical_tourism_os.services.content_interaction import (
     ContentFactory,
     ContentIntelligence,
     DirectMessageIntake,
+    DraftStore,
     PublishingQueue,
 )
 from medical_tourism_os.services.data_governance import DataGovernanceService, ReviewGateError
@@ -37,6 +38,7 @@ __all__ = [
     "DataGovernanceService",
     "DemandRadar",
     "DirectMessageIntake",
+    "DraftStore",
     "HumanReviewCoordinator",
     "LeadScorer",
     "ProductCatalog",
