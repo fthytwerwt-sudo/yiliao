@@ -56,6 +56,12 @@ _UNSAFE_OFFER_OR_CLINICAL_PATTERNS = (
 _CONTACT_VALUE_PATTERNS = (
     re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE),
     re.compile(r"\+?\d[\d\s-]{7,}\d"),
+    re.compile(r"\bemail\b", re.IGNORECASE),
+    re.compile(r"\bphone\b", re.IGNORECASE),
+    re.compile(r"\bmobile\b", re.IGNORECASE),
+    re.compile(r"\btelegram\b", re.IGNORECASE),
+    re.compile(r"\bline(?:\s+id)?\b", re.IGNORECASE),
+    re.compile(r"\bqq\b", re.IGNORECASE),
     re.compile(r"\bwechat\b", re.IGNORECASE),
     re.compile(r"\bwhatsapp\b", re.IGNORECASE),
     re.compile(r"微信"),
@@ -69,6 +75,9 @@ _CONTACT_VALUE_PATTERNS = (
 )
 _SAFE_CHANNEL_CODE_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]{2,63}$")
 _SAFE_OPAQUE_REFERENCE_PATTERN = re.compile(r"^[A-Za-z0-9_-]{6,64}$")
+_TOKENIZED_CONTACT_REFERENCE_PATTERN = re.compile(r"^contact_ref_[a-f0-9]{20}$")
+_TEST_CHANNEL_PREFIX = "TEST_"
+_DISALLOWED_CHANNEL_CODES = {"EMAIL", "PHONE", "MOBILE", "TELEGRAM", "LINE", "QQ", "WECHAT", "WHATSAPP"}
 
 
 def _ensure_non_clinical_text(*, field_name: str, value: str) -> str:
@@ -113,6 +122,10 @@ def tokenize_contact_reference(contact_reference: str) -> str:
     normalized = contact_reference.strip()
     if not normalized:
         raise ValueError("contact_reference_required")
+    if _TOKENIZED_CONTACT_REFERENCE_PATTERN.fullmatch(normalized):
+        # LeadScorer 是公共 API，可能既接收 workflow 新生成的 token，
+        # 也接收上游已经保存过的 lead。这里必须幂等，避免重复哈希导致同一线索断链。
+        return normalized
     if any(pattern.search(normalized) for pattern in _CONTACT_VALUE_PATTERNS):
         raise ValueError("contact_reference_contains_pii")
     if not _SAFE_OPAQUE_REFERENCE_PATTERN.fullmatch(normalized):
@@ -121,7 +134,10 @@ def tokenize_contact_reference(contact_reference: str) -> str:
     return f"contact_ref_{digest}"
 
 
-def validate_source_channel_code(source: str) -> str:
+def validate_source_channel_code(
+    source: str,
+    allowed_channel_codes: Sequence[str] = (),
+) -> str:
     """
     作用：
     约束 Phase 3 只保存受限安全 channel code，而不是外部账号句柄。
@@ -144,6 +160,14 @@ def validate_source_channel_code(source: str) -> str:
         raise ValueError("source_contains_contact_value")
     if not _SAFE_CHANNEL_CODE_PATTERN.fullmatch(normalized):
         raise ValueError("source_must_be_safe_channel_code")
+    if normalized in _DISALLOWED_CHANNEL_CODES:
+        raise ValueError("source_uses_contact_hint_keyword")
+    normalized_allowlist = tuple(item.strip() for item in allowed_channel_codes if item.strip())
+    if normalized.startswith(_TEST_CHANNEL_PREFIX):
+        return normalized
+    if normalized_allowlist and normalized in normalized_allowlist:
+        return normalized
+    raise ValueError("source_requires_explicit_allowlist")
     return normalized
 
 
@@ -368,8 +392,10 @@ class LeadScorer:
         value_scores: Optional[Mapping[str, Mapping[str, float]]] = None,
         band_thresholds: Optional[Mapping[str, int]] = None,
         next_action_map: Optional[Mapping[str, str]] = None,
+        allowed_channel_codes: Sequence[str] = (),
     ) -> None:
         self.weights = dict(weights)
+        self.allowed_channel_codes = tuple(item.strip() for item in allowed_channel_codes if item.strip())
         self.value_scores = {
             "consent": {
                 "granted": 1.0,
@@ -424,10 +450,15 @@ class LeadScorer:
         评分卡也不会接收或回写它们。
         """
 
+        safe_contact_reference = tokenize_contact_reference(contact_reference)
+        safe_source = validate_source_channel_code(
+            source,
+            allowed_channel_codes=self.allowed_channel_codes,
+        )
         features = {
             "consent": _normalize_phrase(consent_status or "unknown"),
-            "contact_reference": contact_reference.strip(),
-            "source": source.strip(),
+            "contact_reference": safe_contact_reference,
+            "source": safe_source,
             "intent": _normalize_phrase(intent or "unknown"),
         }
         total = 0
@@ -623,6 +654,7 @@ def build_anonymous_lead(
     contact_reference: str,
     source: str,
     consent_status: str = "unknown",
+    allowed_channel_codes: Sequence[str] = (),
 ) -> AnonymousLead:
     """
     作用：
@@ -640,7 +672,10 @@ def build_anonymous_lead(
 
     normalized_consent = _normalize_phrase(consent_status or "unknown")
     safe_contact_reference = tokenize_contact_reference(contact_reference)
-    safe_source = validate_source_channel_code(source)
+    safe_source = validate_source_channel_code(
+        source,
+        allowed_channel_codes=allowed_channel_codes,
+    )
     next_action = "manual_consent_check"
     if normalized_consent in {"granted", "provided", "yes"}:
         next_action = "human_review_queue"

@@ -41,9 +41,11 @@ class InboundWorkflow:
         *,
         risk_router: RiskRouter,
         lead_scorer: Optional[LeadScorer] = None,
+        allowed_channel_codes: tuple[str, ...] = (),
     ) -> None:
         self.risk_router = risk_router
         self.lead_scorer = lead_scorer
+        self.allowed_channel_codes = tuple(item.strip() for item in allowed_channel_codes if item.strip())
 
     def process(
         self,
@@ -84,6 +86,7 @@ class InboundWorkflow:
                 contact_reference=contact_reference,
                 source=source,
                 consent_status=consent_status,
+                allowed_channel_codes=self.allowed_channel_codes,
             )
         except ValueError as exc:
             # contact_reference/source 是另一条可能绕过正文风险路由的输入通道；

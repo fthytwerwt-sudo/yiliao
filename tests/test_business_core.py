@@ -101,6 +101,12 @@ class BusinessCoreTests(unittest.TestCase):
             ("PHI", "身份证号码给你"),
             ("privacy", "微信 wechat_test_001"),
             ("privacy", "WhatsApp: +1 415 555 0100"),
+            ("privacy", "email me later"),
+            ("privacy", "phone me later"),
+            ("privacy", "mobile contact later"),
+            ("privacy", "telegram @foo"),
+            ("privacy", "line id abc123"),
+            ("privacy", "qq 123456"),
         )
         for expected_category, text in blocked_samples:
             with self.subTest(text=text):
@@ -154,9 +160,83 @@ class BusinessCoreTests(unittest.TestCase):
             intent="high",
         )
 
-        self.assertEqual("contact_ref_test_opaque", scored.contact_reference)
+        self.assertTrue(scored.contact_reference.startswith("contact_ref_"))
+        self.assertNotEqual("contact_ref_test_opaque", scored.contact_reference)
         self.assertNotIn("@", scored.contact_reference)
         self.assertNotIn("+", scored.contact_reference)
+
+    def test_lead_score_tokenizes_safe_reference_and_validates_source_itself(self) -> None:
+        """LeadScorer 作为公共 API 必须自己 token 化 contact 并校验 source。"""
+        scorer = LeadScorer(
+            weights={"consent": 4, "contact_reference": 2, "source": 1, "intent": 3}
+        )
+
+        scored = scorer.score(
+            anonymous_lead_id="lead-test-001",
+            contact_reference="SAFE_OPAQUE_REF_001",
+            source="TEST_CHANNEL_A",
+            consent_status="granted",
+            intent="high",
+        )
+
+        self.assertTrue(scored.contact_reference.startswith("contact_ref_"))
+        self.assertNotEqual("SAFE_OPAQUE_REF_001", scored.contact_reference)
+        self.assertEqual("TEST_CHANNEL_A", scored.source)
+        self.assertNotIn("SAFE_OPAQUE_REF_001", str(scored.to_dict()))
+
+    def test_lead_score_rejects_raw_contact_values_without_workflow(self) -> None:
+        """即使绕过 workflow，score 也不能接受 raw email/phone/passport contact。"""
+        scorer = LeadScorer(
+            weights={"consent": 4, "contact_reference": 2, "source": 1, "intent": 3}
+        )
+        samples = (
+            "alice@example.com",
+            "+86 13800138000",
+            "passport ABC123456",
+        )
+
+        for contact_reference in samples:
+            with self.subTest(contact_reference=contact_reference):
+                with self.assertRaises(ValueError):
+                    scorer.score(
+                        anonymous_lead_id="lead-test-001",
+                        contact_reference=contact_reference,
+                        source="TEST_CHANNEL_A",
+                        consent_status="granted",
+                        intent="high",
+                    )
+
+    def test_lead_score_requires_explicit_channel_allowlist_for_non_test_codes(self) -> None:
+        """没有 allowlist 时只能放行 TEST_* synthetic code。"""
+        scorer = LeadScorer(
+            weights={"consent": 4, "contact_reference": 2, "source": 1, "intent": 3}
+        )
+
+        with self.assertRaises(ValueError):
+            scorer.score(
+                anonymous_lead_id="lead-test-001",
+                contact_reference="SAFE_OPAQUE_REF_001",
+                source="SAFE_CHANNEL_ALPHA",
+                consent_status="granted",
+                intent="high",
+            )
+
+    def test_lead_score_rejects_email_and_phone_channel_codes(self) -> None:
+        """EMAIL/PHONE 这种联系人提示词不能伪装成安全 source code。"""
+        scorer = LeadScorer(
+            weights={"consent": 4, "contact_reference": 2, "source": 1, "intent": 3}
+        )
+
+        for source in ("EMAIL", "PHONE"):
+            with self.subTest(source=source):
+                with self.assertRaises(ValueError):
+                    scorer.score(
+                        anonymous_lead_id="lead-test-001",
+                        contact_reference="SAFE_OPAQUE_REF_001",
+                        source=source,
+                        consent_status="granted",
+                        intent="high",
+                    )
 
     def test_product_matching_returns_candidate_only_not_a_medical_recommendation(self) -> None:
         """匹配只能解释候选满足的非临床条件，不能给出医疗建议。"""
@@ -355,6 +435,44 @@ class BusinessCoreTests(unittest.TestCase):
         self.assertTrue(blocked.blocked)
         self.assertIsNone(blocked.lead)
         self.assertEqual("privacy", blocked.category)
+
+    def test_inbound_workflow_requires_allowlist_for_non_test_channel_codes(self) -> None:
+        """非 TEST source 若无显式 allowlist，不得创建 lead。"""
+        workflow = InboundWorkflow(risk_router=RiskRouter())
+
+        blocked = workflow.process(
+            text="I have a general coordination question",
+            source="SAFE_CHANNEL_ALPHA",
+            contact_reference="SAFE_OPAQUE_REF_001",
+        )
+
+        self.assertTrue(blocked.blocked)
+        self.assertIsNone(blocked.lead)
+        self.assertEqual("privacy", blocked.category)
+
+    def test_inbound_workflow_allows_configured_non_test_channel_code(self) -> None:
+        """一旦调用方显式提供 allowlist，非 TEST channel code 才可通过。"""
+        scorer = LeadScorer(
+            weights={"consent": 4, "contact_reference": 2, "source": 1, "intent": 3},
+            allowed_channel_codes=("SAFE_CHANNEL_ALPHA",),
+        )
+        workflow = InboundWorkflow(
+            risk_router=RiskRouter(),
+            lead_scorer=scorer,
+            allowed_channel_codes=("SAFE_CHANNEL_ALPHA",),
+        )
+
+        allowed = workflow.process(
+            text="I have a general coordination question",
+            source="SAFE_CHANNEL_ALPHA",
+            contact_reference="SAFE_OPAQUE_REF_001",
+            consent_status="granted",
+            intent="high",
+        )
+
+        self.assertFalse(allowed.blocked)
+        assert allowed.lead is not None
+        self.assertEqual("SAFE_CHANNEL_ALPHA", allowed.lead.source)
 
 
 if __name__ == "__main__":
