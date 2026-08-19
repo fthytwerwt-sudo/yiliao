@@ -20,16 +20,28 @@ from medical_tourism_os.services.business_core import (
     ProductMatcher,
     build_anonymous_lead,
 )
+from medical_tourism_os.services.content_interaction import (
+    CommentIntake,
+    ContentFactory,
+    ContentIntelligence,
+    DirectMessageIntake,
+    PublishingQueue,
+)
 from medical_tourism_os.services.data_governance import DataGovernanceService, ReviewGateError
 from medical_tourism_os.services.risk_router import RiskRouter
 
 __all__ = [
+    "CommentIntake",
+    "ContentFactory",
+    "ContentIntelligence",
     "DataGovernanceService",
     "DemandRadar",
+    "DirectMessageIntake",
     "HumanReviewCoordinator",
     "LeadScorer",
     "ProductCatalog",
     "ProductMatcher",
+    "PublishingQueue",
     "ReviewGateError",
     "RiskRouter",
     "build_anonymous_lead",

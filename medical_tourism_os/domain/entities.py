@@ -559,3 +559,73 @@ class WorkflowResult:
     lead: Optional[AnonymousLead]
     scorecard: Optional[LeadScoreCard]
     safe_summary: Dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ContentBrief:
+    """
+    作用：
+    表示内容判断层基于候选需求与候选产品得到的结构化 brief。
+
+    输入：
+    Demand signal、Product candidate、fact refs 与 experiment id。
+
+    输出：
+    供 ContentFactory 生成各类草稿的最小结构化对象。
+
+    关键边界：
+    这里明确保留 `candidate_evidence_ids` 与 `evidence_status`，提醒下游它只是候选证据，
+    不是已确认事实、最终报价或医疗承诺。
+    """
+
+    id: str
+    demand_signal_id: str
+    product_code: str
+    market: str
+    theme: str
+    target_segment: str
+    value_hypothesis: str
+    fact_refs: tuple[str, ...]
+    candidate_evidence_ids: tuple[str, ...]
+    experiment_id: str
+    evidence_status: str
+    safety_boundary: str
+    created_at: str
+
+
+@dataclass(frozen=True)
+class ContentDraft:
+    """
+    作用：
+    承载一个待人工复核的结构化内容草稿。
+
+    输入：
+    brief id、内容类型、标题、结构化内容与安全状态字段。
+
+    输出：
+    供 PublishingQueue 和测试消费的稳定草稿对象。
+
+    关键边界：
+    Phase 4 所有内容必须从 `draft` 起步；`publication_id` 在真正允许并执行发布前必须为空。
+    """
+
+    id: str
+    brief_id: str
+    content_type: str
+    title: str
+    content: Dict[str, Any]
+    status: str
+    fact_refs: tuple[str, ...]
+    experiment_id: str
+    evidence_status: str
+    publication_id: Optional[str]
+    reviewed_by: Optional[str]
+    created_at: str
+    updated_at: str
+
+    def with_updates(self, **changes: Any) -> "ContentDraft":
+        """基于当前草稿创建带更新时间的新副本。"""
+
+        payload = dict(changes)
+        payload.setdefault("updated_at", _utc_now_isoformat())
+        return replace(self, **payload)
