@@ -142,16 +142,24 @@ class LearningInterfacesE2ETests(unittest.TestCase):
             thread = Thread(target=server.serve_forever, daemon=True)
             thread.start()
             try:
+                root_response = urlopen(
+                    f"http://{server.server_address[0]}:{server.server_address[1]}/",
+                    timeout=2,
+                )
                 response = urlopen(
                     f"http://{server.server_address[0]}:{server.server_address[1]}/facts",
                     timeout=2,
                 )
+                root_body = root_response.read().decode("utf-8")
                 payload = json.loads(response.read().decode("utf-8"))
             finally:
                 server.shutdown()
                 server.server_close()
                 thread.join(timeout=2)
 
+        self.assertEqual("text/plain; charset=utf-8", root_response.headers.get_content_type() + "; charset=" + root_response.headers.get_content_charset())
+        self.assertEqual("application/json", response.headers.get_content_type())
+        self.assertIn("Local API debug index", root_body)
         self.assertIn("items", payload)
         self.assertFalse(thread.is_alive())
 
