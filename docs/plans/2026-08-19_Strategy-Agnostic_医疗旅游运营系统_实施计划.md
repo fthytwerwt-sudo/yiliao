@@ -39,7 +39,7 @@
 
 **Step 2: Run the test to verify it fails**
 
-Run: `/usr/bin/python3 -m unittest tests.test_governance_sync -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_governance_sync -v`
 Expected: FAIL，因为工程决定及精确脚本边界尚不存在。
 
 **Step 3: Add minimal governance records**
@@ -57,7 +57,7 @@ engineering_scope:
 
 **Step 4: Run regression tests**
 
-Run: `/usr/bin/python3 -m unittest tests.test_governance_sync tests.test_collaboration_system -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_governance_sync tests.test_collaboration_system -v`
 Expected: PASS。
 
 **Step 5: Commit**
@@ -89,7 +89,7 @@ Expected: PASS。
 
 **Step 2: Verify RED**
 
-Run: `/usr/bin/python3 -m unittest tests.test_foundation -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_foundation -v`
 Expected: FAIL，包和实现尚不存在。
 
 **Step 3: Implement minimal ports and entities**
@@ -98,7 +98,7 @@ Expected: FAIL，包和实现尚不存在。
 
 **Step 4: Verify GREEN**
 
-Run: `/usr/bin/python3 -m unittest tests.test_foundation -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_foundation -v`
 Expected: PASS。
 
 **Step 5: Commit**
@@ -120,7 +120,7 @@ Expected: PASS。
 
 **Step 2: Verify RED**
 
-Run: `/usr/bin/python3 -m unittest tests.test_data_governance -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_data_governance -v`
 Expected: FAIL，管线未实现。
 
 **Step 3: Implement one-stage-at-a-time pipeline**
@@ -129,7 +129,7 @@ Expected: FAIL，管线未实现。
 
 **Step 4: Verify GREEN and foundation regression**
 
-Run: `/usr/bin/python3 -m unittest tests.test_foundation tests.test_data_governance -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_foundation tests.test_data_governance -v`
 Expected: PASS。
 
 **Step 5: Commit**
@@ -151,7 +151,7 @@ Expected: PASS。
 
 **Step 2: Verify RED**
 
-Run: `/usr/bin/python3 -m unittest tests.test_business_core tests.test_risk_and_permissions -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_business_core tests.test_risk_and_permissions -v`
 Expected: FAIL，服务不存在。
 
 **Step 3: Implement configuration-driven services**
@@ -160,7 +160,7 @@ Expected: FAIL，服务不存在。
 
 **Step 4: Verify GREEN**
 
-Run: `/usr/bin/python3 -m unittest tests.test_business_core tests.test_risk_and_permissions -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_business_core tests.test_risk_and_permissions -v`
 Expected: PASS。
 
 **Step 5: Commit**
@@ -179,7 +179,7 @@ Expected: PASS。
 
 **Step 2: Verify RED**
 
-Run: `/usr/bin/python3 -m unittest tests.test_content_and_interaction -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_content_and_interaction -v`
 Expected: FAIL。
 
 **Step 3: Implement draft-only state machines**
@@ -188,7 +188,7 @@ Expected: FAIL。
 
 **Step 4: Verify GREEN**
 
-Run: `/usr/bin/python3 -m unittest tests.test_content_and_interaction -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_content_and_interaction -v`
 Expected: PASS。
 
 **Step 5: Commit**
@@ -208,7 +208,7 @@ Expected: PASS。
 
 **Step 2: Verify RED**
 
-Run: `/usr/bin/python3 -m unittest tests.test_learning_loop -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_learning_loop -v`
 Expected: FAIL。
 
 **Step 3: Implement reviewable learning loop**
@@ -217,7 +217,7 @@ Expected: FAIL。
 
 **Step 4: Verify GREEN**
 
-Run: `/usr/bin/python3 -m unittest tests.test_learning_loop -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_learning_loop -v`
 Expected: PASS。
 
 **Step 5: Commit**
@@ -240,7 +240,7 @@ Expected: PASS。
 
 **Step 2: Verify RED**
 
-Run: `/usr/bin/python3 -m unittest tests.test_interfaces -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_interfaces -v`
 Expected: FAIL。
 
 **Step 3: Implement local-only interfaces**
@@ -249,7 +249,7 @@ Expected: FAIL。
 
 **Step 4: Verify GREEN**
 
-Run: `/usr/bin/python3 -m unittest tests.test_interfaces -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_interfaces -v`
 Expected: PASS。
 
 **Step 5: Commit**
@@ -272,7 +272,7 @@ E2E 必须跑 `Research → Fact → Demand → Product → Content → Comment/
 
 **Step 2: Verify RED**
 
-Run: `/usr/bin/python3 -m unittest tests.test_e2e_synthetic_scenario tests.test_no_strategy_hardcoding -v`  
+Run: `/usr/bin/python3 -m unittest tests.test_e2e_synthetic_scenario tests.test_no_strategy_hardcoding -v`
 Expected: FAIL，完整场景或检查器尚不存在。
 
 **Step 3: Implement minimal orchestration and user documentation**
