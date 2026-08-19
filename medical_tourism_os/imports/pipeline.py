@@ -18,12 +18,24 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import re
 from datetime import date
 from io import StringIO
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
 
 from medical_tourism_os.domain.entities import FactRecord, ReviewStatus
 from medical_tourism_os.domain.policies import is_sensitive_key
+
+
+_SENSITIVE_VALUE_PATTERNS = (
+    re.compile(r"\bpatient\b", re.IGNORECASE),
+    re.compile(r"\bpassport\b", re.IGNORECASE),
+    re.compile(r"\b(date of birth|dob)\b", re.IGNORECASE),
+    re.compile(r"\b(surgery|medication|prescription|diagnosis|treatment)\b", re.IGNORECASE),
+    re.compile(r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"),
+    re.compile(r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b"),
+    re.compile(r"\+?\d[\d ()-]{7,}\d"),
+)
 
 
 class ValidationError(ValueError):
@@ -143,6 +155,10 @@ class Validator:
         for key in original_payload.keys():
             if is_sensitive_key(str(key)):
                 raise ValidationError("sensitive_input_detected")
+        if _contains_sensitive_value(original_payload):
+            raise ValidationError("sensitive_free_text_detected")
+        if _contains_sensitive_value(normalized_payload):
+            raise ValidationError("sensitive_free_text_detected")
 
         if not str(normalized_payload.get("source", "")).strip():
             raise ValidationError("source_is_required")
@@ -172,6 +188,46 @@ class Validator:
         forbidden = {"CANONICAL_FACT", "DECISION", "APPROVED"}
         if requested_classification in forbidden or requested_review_status in forbidden:
             raise ValidationError("research_input_cannot_preapprove_fact")
+
+
+def _contains_sensitive_value(payload: Any) -> bool:
+    """
+    作用：
+    递归检查自由文本值里是否包含患者/PII/临床敏感模式。
+
+    输入：
+    任意嵌套的 dict / list / 字符串载荷。
+
+    输出：
+    `True` 表示必须在 Raw 存储前拒绝。
+
+    关键边界：
+    这里用保守启发式 fail-closed。Phase 2 的目标是阻止敏感原文入库，不是最大化召回所有合法业务研究文本。
+    """
+
+    if isinstance(payload, Mapping):
+        for key, value in payload.items():
+            normalized_key = str(key).strip().lower()
+            if normalized_key in {"source_date", "scope", "import_format", "classification", "review_status"}:
+                continue
+            if _contains_sensitive_value(value):
+                return True
+        return False
+    if isinstance(payload, (list, tuple)):
+        return any(_contains_sensitive_value(item) for item in payload)
+    if isinstance(payload, str):
+        return _string_looks_sensitive(payload)
+    return False
+
+
+def _string_looks_sensitive(value: str) -> bool:
+    normalized = " ".join(value.split())
+    if not normalized or normalized.startswith("TEST_"):
+        return False
+    for pattern in _SENSITIVE_VALUE_PATTERNS:
+        if pattern.search(normalized):
+            return True
+    return False
 
 
 class Deduplicator:

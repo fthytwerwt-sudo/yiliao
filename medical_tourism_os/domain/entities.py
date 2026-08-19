@@ -285,6 +285,7 @@ class LifecycleEvent:
 
     id: str
     record_id: str
+    sequence: int
     stage: LifecycleStage
     action: str
     details: Dict[str, Any]
@@ -294,6 +295,7 @@ class LifecycleEvent:
     def new(
         cls,
         record_id: str,
+        sequence: int,
         stage: LifecycleStage,
         action: str,
         details: Dict[str, Any],
@@ -303,6 +305,7 @@ class LifecycleEvent:
         return cls(
             id=f"lifecycle_{uuid4().hex}",
             record_id=record_id,
+            sequence=sequence,
             stage=stage,
             action=action,
             details=details,
@@ -323,6 +326,7 @@ class LifecycleEvent:
         return cls(
             id=str(payload["id"]),
             record_id=str(payload["record_id"]),
+            sequence=int(payload.get("sequence", 0)),
             stage=LifecycleStage(str(payload["stage"])),
             action=str(payload["action"]),
             details=dict(payload["details"]),

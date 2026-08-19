@@ -75,12 +75,109 @@ class SqliteStore:
         migration 必须可重复执行，因为测试、本地初始化和未来幂等启动都会多次调用。
         """
 
-        migration_path = (
-            Path(__file__).resolve().parents[1] / "migrations" / "001_initial_schema.sql"
-        )
-        script = migration_path.read_text(encoding="utf-8")
         with self._connect() as connection:
-            connection.executescript(script)
+            migrations_directory = Path(__file__).resolve().parents[1] / "migrations"
+            applied_versions = self._load_applied_versions(connection)
+            for migration_path in sorted(migrations_directory.glob("*.sql")):
+                version = migration_path.stem
+                if version in applied_versions:
+                    continue
+                if version == "002_lifecycle_event_sequence":
+                    self._prepare_lifecycle_sequence_upgrade(connection)
+                script = migration_path.read_text(encoding="utf-8")
+                connection.executescript(script)
+
+    def _load_applied_versions(self, connection: sqlite3.Connection) -> List[str]:
+        """
+        作用：
+        读取已执行 migration 版本。
+
+        输入：
+        已打开的 SQLite 连接。
+
+        输出：
+        已应用版本列表；若 schema_migrations 尚不存在则返回空列表。
+
+        关键边界：
+        先判断表是否存在，避免首次启动时直接查询失败。
+        """
+
+        table_exists = connection.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table' AND name = 'schema_migrations'
+            """
+        ).fetchone()
+        if table_exists is None:
+            return []
+        rows = connection.execute("SELECT version FROM schema_migrations").fetchall()
+        return [str(row["version"]) for row in rows]
+
+    def _prepare_lifecycle_sequence_upgrade(self, connection: sqlite3.Connection) -> None:
+        """
+        作用：
+        在写入 002 migration 版本前，确保 lifecycle_events 具备 sequence 列并为旧数据补序。
+
+        输入：
+        已打开的 SQLite 连接。
+
+        输出：
+        无。
+
+        关键边界：
+        这里兼容已经跑过旧版 Phase 2 的数据库；不能假设表结构永远和当前仓库完全一致。
+        """
+
+        table_exists = connection.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table' AND name = 'lifecycle_events'
+            """
+        ).fetchone()
+        if table_exists is None:
+            connection.execute(
+                """
+                CREATE TABLE lifecycle_events (
+                    id TEXT PRIMARY KEY,
+                    record_id TEXT NOT NULL,
+                    sequence INTEGER NOT NULL,
+                    stage TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    details_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (record_id) REFERENCES facts(id)
+                )
+                """
+            )
+            return
+
+        columns = {
+            str(row["name"])
+            for row in connection.execute("PRAGMA table_info(lifecycle_events)").fetchall()
+        }
+        if "sequence" not in columns:
+            connection.execute(
+                "ALTER TABLE lifecycle_events ADD COLUMN sequence INTEGER NOT NULL DEFAULT 0"
+            )
+
+        rows = connection.execute(
+            """
+            SELECT id, record_id
+            FROM lifecycle_events
+            ORDER BY created_at ASC, id ASC
+            """
+        ).fetchall()
+        next_by_record: Dict[str, int] = {}
+        for row in rows:
+            record_id = str(row["record_id"])
+            next_sequence = next_by_record.get(record_id, 0) + 1
+            connection.execute(
+                "UPDATE lifecycle_events SET sequence = ? WHERE id = ?",
+                (next_sequence, str(row["id"])),
+            )
+            next_by_record[record_id] = next_sequence
 
     def save_fact(self, record: FactRecord) -> None:
         """
@@ -193,14 +290,15 @@ class SqliteStore:
             connection.execute(
                 """
                 INSERT OR REPLACE INTO lifecycle_events (
-                    id, record_id, stage, action, details_json, created_at
+                    id, record_id, sequence, stage, action, details_json, created_at
                 ) VALUES (
-                    :id, :record_id, :stage, :action, :details_json, :created_at
+                    :id, :record_id, :sequence, :stage, :action, :details_json, :created_at
                 )
                 """,
                 {
                     "id": payload["id"],
                     "record_id": payload["record_id"],
+                    "sequence": payload["sequence"],
                     "stage": payload["stage"],
                     "action": payload["action"],
                     "details_json": dumps(payload["details"], ensure_ascii=False, sort_keys=True),
@@ -224,14 +322,14 @@ class SqliteStore:
         """
 
         query = """
-            SELECT id, record_id, stage, action, details_json, created_at
+            SELECT id, record_id, sequence, stage, action, details_json, created_at
             FROM lifecycle_events
         """
         parameters: tuple[Any, ...] = ()
         if record_id is not None:
             query += " WHERE record_id = ?"
             parameters = (record_id,)
-        query += " ORDER BY created_at ASC, id ASC"
+        query += " ORDER BY sequence ASC, id ASC"
         with self._connect() as connection:
             rows = connection.execute(query, parameters).fetchall()
         events = []
@@ -240,3 +338,25 @@ class SqliteStore:
             payload["details"] = loads(payload.pop("details_json"))
             events.append(payload)
         return events
+
+    def next_lifecycle_sequence(self, record_id: str) -> int:
+        """
+        作用：
+        为指定事实计算下一条生命周期事件 sequence。
+
+        输入：
+        `record_id`。
+
+        输出：
+        从 1 开始递增的整数。
+
+        关键边界：
+        使用数据库中的持久计数，而不是依赖时间戳排序，避免同秒写入时顺序漂移。
+        """
+
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT COALESCE(MAX(sequence), 0) AS max_sequence FROM lifecycle_events WHERE record_id = ?",
+                (record_id,),
+            ).fetchone()
+        return int(row["max_sequence"]) + 1

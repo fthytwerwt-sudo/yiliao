@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Iterable, Optional, Sequence, Tuple
+import hashlib
+from typing import Any, Optional, Sequence, Tuple
 
 from medical_tourism_os.audit.logger import AuditLogger
 from medical_tourism_os.domain.entities import (
@@ -191,21 +192,20 @@ class DataGovernanceService:
             record=candidate,
             stage=LifecycleStage.RAW,
             action="research_received",
-            details={
-                "import_format": normalized["import_format"],
-                "source": candidate.source,
-                "scope": candidate.scope,
-            },
+            details=self._safe_payload_metadata(
+                {
+                    "import_format": normalized["import_format"],
+                    "source": normalized["source"],
+                    "scope": normalized["scope"],
+                }
+            ),
         )
         # Staging 只保存清洗后的 claim，而不是潜在敏感的原始自由文本。
         self._record_lifecycle(
             record=candidate,
             stage=LifecycleStage.STAGING,
             action="research_normalized",
-            details={
-                "claim": candidate.claim,
-                "provenance": candidate.provenance,
-            },
+            details=self._safe_payload_metadata(normalized),
         )
         self._record_lifecycle(
             record=candidate,
@@ -339,6 +339,10 @@ class DataGovernanceService:
             raise ReviewGateError("only_fact_candidate_can_be_promoted")
         if record.review_status != ReviewStatus.PENDING:
             raise ReviewGateError("only_pending_candidate_can_be_promoted")
+        if record.freshness == "stale":
+            raise ReviewGateError("stale_candidate_requires_human_resolution")
+        if record.conflict_status == "conflicted":
+            raise ReviewGateError("conflicted_candidate_requires_human_resolution")
 
         canonical = record.with_updates(
             classification=FactClassification.CANONICAL_FACT,
@@ -368,6 +372,107 @@ class DataGovernanceService:
         )
         return canonical
 
+    def resolve_freshness(self, record_id: str, reviewed_by: str) -> FactRecord:
+        """
+        作用：
+        由具名人工 reviewer 明确解除 stale 阻断。
+
+        输入：
+        事实 ID 与 reviewer 名称。
+
+        输出：
+        freshness 被重置后的候选记录。
+
+        关键边界：
+        stale 只是“待人工确认”的状态；只有具名 resolution 后，approve 才能继续。
+        """
+
+        reviewer_name = reviewed_by.strip()
+        if not reviewer_name:
+            raise ReviewGateError("named_human_reviewer_required")
+
+        record = self._require_record(record_id)
+        if record.freshness != "stale":
+            raise ReviewGateError("only_stale_candidate_can_be_resolved")
+
+        resolved = record.with_updates(freshness="fresh")
+        self.repository.save(resolved)
+        self._record_lifecycle(
+            record=resolved,
+            stage=LifecycleStage.ADJUDICATED,
+            action="freshness_resolved",
+            details={
+                "resolved_by": reviewer_name,
+                "freshness": resolved.freshness,
+            },
+        )
+        self.audit_logger.record(
+            action="freshness_resolved",
+            outcome="accepted",
+            details={
+                "record_id": resolved.id,
+                "stage": LifecycleStage.ADJUDICATED.value,
+                "reason": "human_resolution_completed",
+                "count": 1,
+            },
+        )
+        return resolved
+
+    def resolve_conflict(
+        self,
+        left_record_id: str,
+        right_record_id: str,
+        reviewed_by: str,
+    ) -> tuple[FactRecord, FactRecord]:
+        """
+        作用：
+        由具名人工 reviewer 明确关闭两条候选之间的冲突阻断。
+
+        输入：
+        两个事实 ID 与 reviewer 名称。
+
+        输出：
+        conflict_status 被置为 `resolved` 的两条候选记录。
+
+        关键边界：
+        这里解决的是“可以继续进入审批”的流程阻断，不是系统替代人类去判断哪条业务结论为真。
+        """
+
+        reviewer_name = reviewed_by.strip()
+        if not reviewer_name:
+            raise ReviewGateError("named_human_reviewer_required")
+
+        left = self._require_record(left_record_id)
+        right = self._require_record(right_record_id)
+        if left.conflict_status != "conflicted" or right.conflict_status != "conflicted":
+            raise ReviewGateError("only_conflicted_candidates_can_be_resolved")
+
+        resolved_left = left.with_updates(conflict_status="resolved")
+        resolved_right = right.with_updates(conflict_status="resolved")
+        self.repository.save(resolved_left)
+        self.repository.save(resolved_right)
+        for record in (resolved_left, resolved_right):
+            self._record_lifecycle(
+                record=record,
+                stage=LifecycleStage.ADJUDICATED,
+                action="conflict_resolved",
+                details={
+                    "resolved_by": reviewer_name,
+                    "conflict_status": record.conflict_status,
+                },
+            )
+            self.audit_logger.record(
+                action="conflict_resolved",
+                outcome="accepted",
+                details={
+                    "record_id": record.id,
+                    "stage": LifecycleStage.ADJUDICATED.value,
+                    "reason": "human_resolution_completed",
+                    "count": 1,
+                },
+            )
+        return resolved_left, resolved_right
+
     def list_review_queue(self) -> Sequence[FactRecord]:
         """返回当前仍待人工复核的事实候选。"""
 
@@ -382,11 +487,35 @@ class DataGovernanceService:
     ) -> None:
         event = LifecycleEvent.new(
             record_id=record.id,
+            sequence=self.repository.next_lifecycle_sequence(record.id),
             stage=stage,
             action=action,
             details=details,
         )
         self.repository.save_lifecycle_event(event)
+
+    def _safe_payload_metadata(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        作用：
+        为生命周期事件生成不含自由文本原文的安全元数据。
+
+        输入：
+        已标准化或原始的结构化 payload。
+
+        输出：
+        只包含 hash / 计数等审计安全字段的字典。
+
+        关键边界：
+        lifecycle_events 是治理轨迹，不是原始事实备份；这里故意不保存 claim/source/provenance 文本。
+        """
+
+        digest = hashlib.sha256(
+            repr(sorted(payload.items())).encode("utf-8")
+        ).hexdigest()
+        return {
+            "payload_hash": digest,
+            "field_count": len(payload),
+        }
 
     def _record_rejection(self, reason: str, stage: LifecycleStage) -> None:
         """

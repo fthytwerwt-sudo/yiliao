@@ -51,3 +51,6 @@ class FactStoragePort(Protocol):
 
     def list_lifecycle_events(self, record_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """按可选 record_id 回读生命周期事件。"""
+
+    def next_lifecycle_sequence(self, record_id: str) -> int:
+        """为指定事实分配下一条单调递增的生命周期 sequence。"""

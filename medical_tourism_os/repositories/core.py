@@ -149,3 +149,20 @@ class FactRepository:
             LifecycleEvent.from_dict(payload)
             for payload in self.store.list_lifecycle_events(record_id=record_id)
         ]
+
+    def next_lifecycle_sequence(self, record_id: str) -> int:
+        """
+        作用：
+        查询指定事实下一条生命周期事件的单调 sequence。
+
+        输入：
+        `record_id`。
+
+        输出：
+        从 1 开始、按单条事实递增的整数 sequence。
+
+        关键边界：
+        服务层不能依赖秒级时间戳排序；必须使用持久 sequence 保证因果顺序稳定。
+        """
+
+        return self.store.next_lifecycle_sequence(record_id)
