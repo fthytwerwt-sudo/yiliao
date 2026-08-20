@@ -10,6 +10,13 @@ class Tool(ABC):
     @property
     @abstractmethod
     def tool_id(self) -> str: ...
+
+    @property
+    def requires_external_permission(self) -> bool:
+        """真实 Tool 的安全默认值；本地确定性 Tool 必须显式声明例外。"""
+
+        return True
+
     @abstractmethod
     def execute(self, payload: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
@@ -17,6 +24,8 @@ class MockTool(Tool):
     def __init__(self, tool_id: str) -> None: self._tool_id = tool_id
     @property
     def tool_id(self) -> str: return self._tool_id
+    @property
+    def requires_external_permission(self) -> bool: return False
     def execute(self, payload): return {"status": "MOCK", "tool_id": self.tool_id, "payload": dict(payload)}
 
 class ToolRegistry:
@@ -28,7 +37,13 @@ class ToolRegistry:
     def execute(self, tool_id: str, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         configured = next((t for t in self._config.tools if t.tool_id == tool_id), None)
         if configured is None or tool_id not in self._tools: raise ValueError("tool_not_registered")
-        result = {"status": "BLOCKED", "reason": "tool_permission_denied"} if not configured.enabled or configured.permission != "ALLOW" or not self._permission.authorize("tool.execute").allowed else self._tools[tool_id].execute(payload)
+        tool = self._tools[tool_id]
+        if not configured.enabled or configured.permission != "ALLOW":
+            result = {"status": "BLOCKED", "reason": "tool_permission_denied"}
+        elif tool.requires_external_permission and not self._permission.authorize("tool.execute").allowed:
+            result = {"status": "BLOCKED", "reason": "external_actions_disabled"}
+        else:
+            result = tool.execute(payload)
         self._log.append({"tool_id": tool_id, "status": result["status"]})
         return result
     def execution_log(self): return tuple(dict(item) for item in self._log)

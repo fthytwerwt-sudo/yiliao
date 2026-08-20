@@ -51,6 +51,21 @@ class AiSystemConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ConfigError, "api_key_reference_invalid"):
             AiSystemConfig.from_mapping({"providers": [{"provider_name": "OPENAI", "model_name": "TEST_MODEL", "endpoint": "https://example.invalid", "api_key_reference": "sk-real-key", "enabled": False, "timeout": 1, "cost_limit": 0}], "agents": [], "tools": [], "runtime": {"environment": "TEST", "logging": "STRUCTURED", "retry": 0, "timeout": 1, "budget": 0}})
 
+    def test_provider_requires_nonempty_endpoint_and_agent_uses_closed_policy_vocabularies(self) -> None:
+        """空 endpoint 与自造 policy 都会在配置边界拒绝，不能留给 Runtime 的隐式分支。"""
+
+        from general_ai_business_os.ai_system_config import AiSystemConfig, ConfigError
+
+        valid_runtime = {"environment": "TEST", "logging": "STRUCTURED", "retry": 0, "timeout": 1, "budget": 0}
+        blank_endpoint = {"provider_name": "OPENAI", "model_name": "TEST_MODEL", "endpoint": " ", "api_key_reference": "SECRET_REF_TEST", "enabled": False, "timeout": 1, "cost_limit": 0}
+        with self.assertRaisesRegex(ConfigError, "provider_model_or_endpoint_invalid"):
+            AiSystemConfig.from_mapping({"providers": [blank_endpoint], "agents": [], "tools": [], "runtime": valid_runtime})
+
+        invalid_policy_agent = {"agent_id": "TEST_AGENT", "name": "TEST_AGENT", "role": "TEST_ROLE", "system_prompt": "TEST_PROMPT", "model_provider": "OPENAI", "tools": [], "memory_policy": "BYPASS_MEMORY", "permission_policy": "BYPASS_POLICY"}
+        valid_provider = {**blank_endpoint, "endpoint": "https://example.invalid"}
+        with self.assertRaisesRegex(ConfigError, "agent_memory_policy_invalid"):
+            AiSystemConfig.from_mapping({"providers": [valid_provider], "agents": [invalid_policy_agent], "tools": [], "runtime": valid_runtime})
+
 
 if __name__ == "__main__":
     unittest.main()

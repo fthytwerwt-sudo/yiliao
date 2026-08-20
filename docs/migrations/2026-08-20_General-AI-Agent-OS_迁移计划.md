@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | `medical_tourism_os/` | 未来业务实例兼容层 | 保留，不删除、不破坏测试。 |
 | `general_ai_business_os/` | General AI Agent OS Core | 继续建设；新 Core 不读取旧 business_config。 |
-| `general_ai_business_os/business_config/` | 被停止的旧 Core Phase 2 尝试 | 不再扩展；保留失败审查与代码作为迁移历史，不作为新 Core 输入。 |
+| 已移除的 `general_ai_business_os/business_config/` | 被停止的旧 Core Phase 2 尝试 | 不再扩展或暴露运行入口；保留失败审查与 Git history 作为迁移历史，不作为新 Core 输入。 |
 
 ## 新 Phase 顺序
 

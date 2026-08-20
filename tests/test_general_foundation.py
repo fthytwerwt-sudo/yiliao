@@ -423,16 +423,7 @@ class GeneralFoundationTests(unittest.TestCase):
             self.assertEqual("127.0.0.1", server.server_address[0])
             self.assertFalse(application.is_running)
             self.assertEqual(
-                {
-                    "/config",
-                    "/content",
-                    "/leads",
-                    "/messages",
-                    "/crm",
-                    "/knowledge",
-                    "/experiments",
-                    "/metrics",
-                },
+                {"/"},
                 set(application.route_inventory()),
             )
         finally:

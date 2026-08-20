@@ -24,6 +24,8 @@ class ConfigError(ValueError):
 
 
 _PROVIDERS = {"OPENAI", "DEEPSEEK", "KIMI", "CLAUDE", "GEMINI"}
+_AGENT_PERMISSION_POLICIES = {"ALLOW", "DEFAULT_DENY"}
+_MEMORY_POLICIES = {"NONE", "LOCAL", "VECTOR", "DATABASE"}
 _CODE = re.compile(r"^[A-Z][A-Z0-9_]{2,63}$")
 _SECRET_REFERENCE = re.compile(r"^SECRET_REF_[A-Z0-9_]{3,63}$")
 
@@ -136,7 +138,12 @@ class AiSystemConfig:
         provider = _code(item["provider_name"], "provider_name")
         if provider not in _PROVIDERS:
             raise ConfigError("provider_name_invalid")
-        if not isinstance(item["model_name"], str) or not item["model_name"].strip() or not isinstance(item["endpoint"], str):
+        if (
+            not isinstance(item["model_name"], str)
+            or not item["model_name"].strip()
+            or not isinstance(item["endpoint"], str)
+            or not item["endpoint"].strip()
+        ):
             raise ConfigError("provider_model_or_endpoint_invalid")
         if not isinstance(item["api_key_reference"], str) or not _SECRET_REFERENCE.fullmatch(item["api_key_reference"]):
             raise ConfigError("api_key_reference_invalid")
@@ -149,7 +156,13 @@ class AiSystemConfig:
         if set(item) != {"agent_id", "name", "role", "system_prompt", "model_provider", "tools", "memory_policy", "permission_policy"}:
             raise ConfigError("agent_fields_invalid")
         tools = tuple(_code(value, "agent_tool") for value in AiSystemConfig._list_codes(item["tools"], "agent_tools"))
-        return AgentConfig(_code(item["agent_id"], "agent_id"), _code(item["name"], "agent_name"), _code(item["role"], "agent_role"), str(item["system_prompt"]), _code(item["model_provider"], "model_provider"), tools, _code(item["memory_policy"], "memory_policy"), _code(item["permission_policy"], "permission_policy"))
+        memory_policy = _code(item["memory_policy"], "agent_memory_policy")
+        if memory_policy not in _MEMORY_POLICIES:
+            raise ConfigError("agent_memory_policy_invalid")
+        permission_policy = _code(item["permission_policy"], "agent_permission_policy")
+        if permission_policy not in _AGENT_PERMISSION_POLICIES:
+            raise ConfigError("agent_permission_policy_invalid")
+        return AgentConfig(_code(item["agent_id"], "agent_id"), _code(item["name"], "agent_name"), _code(item["role"], "agent_role"), str(item["system_prompt"]), _code(item["model_provider"], "model_provider"), tools, memory_policy, permission_policy)
 
     @staticmethod
     def _tool(item: Mapping[str, Any]) -> ToolConfig:

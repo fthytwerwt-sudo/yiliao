@@ -9,7 +9,7 @@
 CLI 创建本地 SQLite 状态并输出可机读的安全运行状态。
 
 边界：
-当前支持本地 `system init` 与 pending-only `config import`；不批准配置、不发消息、不发布内容或连接外部服务。
+当前只支持本地 `system init`；业务配置导入属于 Application Plugin，不能经 Core CLI 注入。
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ import json
 from pathlib import Path
 from typing import Optional, Sequence
 
-from general_ai_business_os.business_config.pipeline import BusinessConfigPipeline
 from general_ai_business_os.config import SystemConfig
 from general_ai_business_os.storage.sqlite_store import SqliteStore
 
@@ -33,11 +32,6 @@ def _build_parser() -> argparse.ArgumentParser:
     system_commands = system.add_subparsers(dest="system_command", required=True)
     init = system_commands.add_parser("init")
     init.add_argument("--state-root", required=True)
-    config = root_commands.add_parser("config")
-    config_commands = config.add_subparsers(dest="config_command", required=True)
-    config_import = config_commands.add_parser("import")
-    config_import.add_argument("--state-root", required=True)
-    config_import.add_argument("--path", required=True)
     return parser
 
 
@@ -60,23 +54,6 @@ def run_cli(argv: Optional[Sequence[str]] = None) -> int:
                 {
                     "status": "initialized",
                     "state_root": str(config.resolved_state_root()),
-                    "external_actions_allowed": config.external_actions_allowed,
-                },
-                ensure_ascii=False,
-                sort_keys=True,
-            )
-        )
-        return 0
-    if arguments.command == "config" and arguments.config_command == "import":
-        config = SystemConfig(state_root=Path(arguments.state_root))
-        package = BusinessConfigPipeline(SqliteStore(config.sqlite_path())).import_package(Path(arguments.path))
-        print(
-            json.dumps(
-                {
-                    "status": "imported",
-                    "business_id": package.manifest.business_id,
-                    "config_version": package.manifest.config_version,
-                    "review_status": package.manifest.review_status.value,
                     "external_actions_allowed": config.external_actions_allowed,
                 },
                 ensure_ascii=False,
