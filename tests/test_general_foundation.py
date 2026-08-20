@@ -231,6 +231,53 @@ class GeneralFoundationTests(unittest.TestCase):
         for unsafe_value in unsafe_values:
             self.assertNotIn(unsafe_value, persisted_text)
 
+    def test_audit_event_recorded_at_is_a_validated_utc_snapshot_without_aliases(self) -> None:
+        """recorded_at 也是审计可持久化字段，不能接收自由文本或调用方容器。"""
+
+        from general_ai_business_os.domain.entities import AuditEvent, StoredRecord
+        from general_ai_business_os.storage.sqlite_store import SqliteStore
+
+        unsafe_values = ("PATIENT_NOTE", "TEST_PERSON", "ghp_ABC123SECRET", "TEST_HEALTH_DETAIL")
+        for unsafe_value in unsafe_values:
+            with self.assertRaisesRegex(ValueError, "audit_recorded_at_invalid"):
+                AuditEvent(
+                    action="adapter.request",
+                    outcome="blocked",
+                    details={"adapter": "content"},
+                    recorded_at=unsafe_value,
+                )
+        for unsafe_value in unsafe_values:
+            with self.assertRaisesRegex(ValueError, "audit_recorded_at_invalid"):
+                AuditEvent(
+                    action="adapter.request",
+                    outcome="blocked",
+                    details={"adapter": "content"},
+                    recorded_at={"nested": unsafe_value},
+                )
+
+        event = AuditEvent(
+            action="adapter.request",
+            outcome="blocked",
+            details={"adapter": "content"},
+            recorded_at="2026-08-20T08:00:00+08:00",
+        )
+        self.assertEqual("2026-08-20T00:00:00+00:00", event.recorded_at)
+        exported = event.to_dict()
+        exported["recorded_at"] = "ghp_ABC123SECRET"
+        self.assertEqual("2026-08-20T00:00:00+00:00", event.recorded_at)
+
+        record = StoredRecord.new(record_id="TEST_AUDIT_TIME", kind="audit_event", payload=event.to_dict())
+        with tempfile.TemporaryDirectory() as directory:
+            store = SqliteStore(Path(directory) / "state.sqlite3")
+            store.migrate()
+            store.save_record(record)
+            recovered = store.get_record("TEST_AUDIT_TIME")
+
+        self.assertIsNotNone(recovered)
+        persisted_text = json.dumps(recovered.to_dict(), ensure_ascii=False, sort_keys=True)
+        for unsafe_value in unsafe_values:
+            self.assertNotIn(unsafe_value, persisted_text)
+
     def test_mock_adapter_reports_dry_run_without_external_execution(self) -> None:
         """Mock 可以验证调用合同，但必须明确它没有触发外部副作用。"""
 

@@ -123,6 +123,26 @@ def _validate_audit_details(details: Mapping[str, Any]) -> Dict[str, Any]:
     return safe_details
 
 
+def _normalize_audit_recorded_at(value: Any) -> str:
+    """
+    验证并标准化审计时间。
+
+    关键边界：
+    时间字段同样会被返回、序列化和持久化；只依赖类型注解会让自由文本或容器绕过审计安全边界。
+    因此只接受带时区的 ISO-8601 字符串，并固定导出为秒级 UTC 格式。
+    """
+
+    if not isinstance(value, str):
+        raise ValueError("audit_recorded_at_invalid")
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as error:
+        raise ValueError("audit_recorded_at_invalid") from error
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("audit_recorded_at_invalid")
+    return parsed.astimezone(timezone.utc).replace(microsecond=0).isoformat()
+
+
 @dataclass(frozen=True)
 class AuditEvent:
     """
@@ -160,6 +180,7 @@ class AuditEvent:
             ),
         )
         object.__setattr__(self, "details", freeze_mapping(_validate_audit_details(self.details)))
+        object.__setattr__(self, "recorded_at", _normalize_audit_recorded_at(self.recorded_at))
 
     def to_dict(self) -> Dict[str, Any]:
         """导出新的普通字典供 JSON/Storage 使用，不暴露事件内部的可变引用。"""
