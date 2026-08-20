@@ -3,6 +3,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Mapping
 from general_ai_business_os.ai_system_config import AiSystemConfig
+from general_ai_business_os.config import SystemConfig
+from general_ai_business_os.permissions.policy import PermissionPolicy
 
 class LLMProvider(ABC):
     """Provider Adapter 合同，支持 chat、generate 与 embedding。"""
@@ -21,11 +23,13 @@ class MockLlmProvider(LLMProvider):
 
 class ModelGateway:
     """按 Provider 配置路由请求；没有注册 Mock/Adapter 时 fail-closed。"""
-    def __init__(self, config: AiSystemConfig, providers: Mapping[str, LLMProvider]) -> None:
+    def __init__(self, config: AiSystemConfig, providers: Mapping[str, LLMProvider], permission: PermissionPolicy | None = None) -> None:
         self._config, self._providers = config, dict(providers)
+        self._permission = permission or PermissionPolicy(SystemConfig())
     def chat(self, provider_name: str, messages: list[Mapping[str, str]]) -> Mapping[str, Any]:
         provider_config = next((p for p in self._config.providers if p.provider_name == provider_name), None)
         if provider_config is None: raise ValueError("model_provider_not_configured")
         if not provider_config.enabled: return {"status": "BLOCKED", "reason": "provider_disabled", "content": ""}
+        if not self._permission.authorize("model.chat").allowed: return {"status": "BLOCKED", "reason": "external_actions_disabled", "content": ""}
         if provider_name not in self._providers: raise ValueError("model_provider_not_registered")
         return self._providers[provider_name].chat(messages, provider_config.model_name)

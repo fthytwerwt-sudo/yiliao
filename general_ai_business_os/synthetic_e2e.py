@@ -7,6 +7,8 @@ from general_ai_business_os.memory import InMemoryStore
 from general_ai_business_os.model_gateway import MockLlmProvider, ModelGateway
 from general_ai_business_os.tool_registry import MockTool, ToolRegistry
 from general_ai_business_os.workflow_engine import WorkflowEngine
+from general_ai_business_os.config import SystemConfig
+from general_ai_business_os.permissions.policy import PermissionPolicy
 
 @dataclass(frozen=True)
 class SyntheticE2EResult:
@@ -17,7 +19,7 @@ class SyntheticE2EResult:
 def run_test_business() -> SyntheticE2EResult:
     """运行 Config→Agent→Tool→Workflow→Memory→Evaluation→Feedback 的纯本地合成链。"""
     config = AiSystemConfig.from_mapping({"providers":[{"provider_name":"OPENAI","model_name":"TEST_MODEL","endpoint":"https://example.invalid","api_key_reference":"SECRET_REF_TEST","enabled":True,"timeout":1,"cost_limit":0}],"agents":[{"agent_id":"TEST_AGENT","name":"TEST_AGENT","role":"TEST_ROLE","system_prompt":"TEST_PROMPT","model_provider":"OPENAI","tools":[],"memory_policy":"NONE","permission_policy":"DEFAULT_DENY"}],"tools":[],"runtime":{"environment":"TEST","logging":"STRUCTURED","retry":0,"timeout":1,"budget":0}})
-    tools = ToolRegistry(config); memory = InMemoryStore(); agents = AgentRegistry(config, ModelGateway(config, {"OPENAI": MockLlmProvider()}), tools, memory)
+    policy = PermissionPolicy(SystemConfig(external_actions_allowed=True)); tools = ToolRegistry(config, policy); memory = InMemoryStore(); agents = AgentRegistry(config, ModelGateway(config, {"OPENAI": MockLlmProvider()}, policy), tools, memory)
     result = WorkflowEngine(agents).run({"nodes":["TEST_AGENT"],"edges":[],"retry":0}, {"input":"TEST_INPUT"})
     if result.status != "COMPLETED" or agents.state("TEST_AGENT") is None: raise AssertionError("synthetic_runtime_incomplete")
     return SyntheticE2EResult(("Config","Agent","Tool","Workflow","Memory","Evaluation","Feedback"), 0, False)

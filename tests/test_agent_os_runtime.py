@@ -14,6 +14,8 @@ class AgentOsRuntimeTests(unittest.TestCase):
         from general_ai_business_os.model_gateway import ModelGateway, MockLlmProvider
         from general_ai_business_os.tool_registry import MockTool, ToolRegistry
         from general_ai_business_os.workflow_engine import WorkflowEngine
+        from general_ai_business_os.config import SystemConfig
+        from general_ai_business_os.permissions.policy import PermissionPolicy
 
         config = AiSystemConfig.from_mapping(
             {
@@ -23,8 +25,9 @@ class AgentOsRuntimeTests(unittest.TestCase):
                 "runtime": {"environment": "TEST", "logging": "STRUCTURED", "retry": 0, "timeout": 1, "budget": 0},
             }
         )
-        gateway = ModelGateway(config, {"OPENAI": MockLlmProvider()})
-        tools = ToolRegistry(config)
+        policy = PermissionPolicy(SystemConfig(external_actions_allowed=True))
+        gateway = ModelGateway(config, {"OPENAI": MockLlmProvider()}, policy)
+        tools = ToolRegistry(config, policy)
         tools.register(MockTool("TEST_TOOL"))
         agents = AgentRegistry(config, gateway, tools)
         workflow = WorkflowEngine(agents)
