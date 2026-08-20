@@ -16,32 +16,60 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+import re
+from typing import Any, Dict
 
 from general_ai_business_os.domain.entities import AuditEvent, utc_now_isoformat
 
 
-_SENSITIVE_KEYS = {"api_key", "authorization", "password", "secret", "token"}
+_ALLOWED_DETAIL_FIELDS = {
+    "adapter",
+    "config_version",
+    "count",
+    "operation",
+    "reason",
+    "record_id",
+    "request_id",
+    "safe_code",
+    "status",
+}
+_SAFE_CODE_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 
 
-def _sanitize(value: Any, key: Optional[str] = None) -> Any:
+def _require_safe_code(value: Any, *, field_name: str) -> str:
     """
-    递归清洗审计值。
+    验证允许写入审计日志的代码型字符串。
 
     关键逻辑：
-    密钥往往嵌套在请求字典中；只过滤顶层字段会让审计日志变成新的泄漏路径，
-    因此每一层 mapping 都按字段名重复判断。
+    审计 action、outcome 和 details 若可承载任意自然语言，仍可成为个人资料、健康信息或
+    Token 的旁路。因此基础层只接收有限字符集的系统代码，而不是尝试猜测所有敏感内容。
     """
 
-    if key is not None and key.lower() in _SENSITIVE_KEYS:
-        return "[REDACTED]"
-    if isinstance(value, dict):
-        return {str(item_key): _sanitize(item_value, str(item_key)) for item_key, item_value in value.items()}
-    if isinstance(value, list):
-        return [_sanitize(item) for item in value]
-    if isinstance(value, tuple):
-        return [_sanitize(item) for item in value]
+    if not isinstance(value, str) or not _SAFE_CODE_PATTERN.fullmatch(value):
+        raise ValueError(f"audit_{field_name}_invalid")
     return value
+
+
+def _validate_details(details: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    构造允许落盘的最小审计详情。
+
+    关键逻辑：
+    这里使用 allowlist（允许字段清单）而不是敏感字段 denylist。未知字段、嵌套对象和自由文本
+    都会被拒绝，因为无法安全证明它们不包含患者、联系人或凭据数据。
+    """
+
+    safe_details: Dict[str, Any] = {}
+    for key, value in details.items():
+        if key not in _ALLOWED_DETAIL_FIELDS:
+            raise ValueError("audit_details_field_not_allowed")
+        if key == "count":
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError("audit_details_count_invalid")
+            safe_details[key] = value
+            continue
+        safe_details[key] = _require_safe_code(value, field_name=f"details_{key}")
+    return safe_details
 
 
 class AuditLogger:
@@ -51,12 +79,12 @@ class AuditLogger:
         self._path = path
 
     def record(self, *, action: str, outcome: str, details: Dict[str, Any]) -> AuditEvent:
-        """清洗 details 后写入一行 JSON，返回同一份已清洗事件供调用者检查。"""
+        """验证 allowlist 后写入一行 JSON；任一不安全字段会在落盘前直接拒绝。"""
 
         event = AuditEvent(
-            action=action,
-            outcome=outcome,
-            details=dict(_sanitize(details)),
+            action=_require_safe_code(action, field_name="action"),
+            outcome=_require_safe_code(outcome, field_name="outcome"),
+            details=_validate_details(details),
             recorded_at=utc_now_isoformat(),
         )
         self._path.parent.mkdir(parents=True, exist_ok=True)

@@ -31,7 +31,7 @@ class GeneralFoundationTests(unittest.TestCase):
         self.assertEqual("external_actions_disabled", decision.reason)
 
     def test_audit_logger_redacts_sensitive_values_before_writing(self) -> None:
-        """审计要保留判断证据，但不得把密钥原文写进日志。"""
+        """审计只保存 allowlist 内的安全字段，未知字段不能借日志落盘。"""
 
         from general_ai_business_os.audit.logger import AuditLogger
 
@@ -40,14 +40,63 @@ class GeneralFoundationTests(unittest.TestCase):
             event = AuditLogger(log_path).record(
                 action="adapter.request",
                 outcome="blocked",
-                details={"api_key": "secret-value", "safe_code": "TEST_VALUE"},
+                details={"safe_code": "TEST_VALUE", "request_id": "TEST_REQUEST"},
             )
 
             persisted = log_path.read_text(encoding="utf-8")
 
-        self.assertEqual("[REDACTED]", event.details["api_key"])
         self.assertIn("TEST_VALUE", persisted)
-        self.assertNotIn("secret-value", persisted)
+        self.assertEqual({"safe_code": "TEST_VALUE", "request_id": "TEST_REQUEST"}, event.details)
+
+    def test_audit_logger_rejects_unknown_and_sensitive_free_text_before_persistence(self) -> None:
+        """患者、健康、Token 或嵌套自由文本都不能变成审计日志的旁路。"""
+
+        from general_ai_business_os.audit.logger import AuditLogger
+
+        unsafe_details = (
+            {"patient_name": "TEST_PERSON"},
+            {"notes": "TEST_HEALTH_DETAIL"},
+            {"access_token": "TEST_ACCESS_TOKEN"},
+            {"safe_code": {"nested": "TEST_UNTRUSTED"}},
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            log_path = Path(directory) / "audit.jsonl"
+            logger = AuditLogger(log_path)
+            for details in unsafe_details:
+                with self.assertRaisesRegex(ValueError, "audit_details"):
+                    logger.record(action="adapter.request", outcome="blocked", details=details)
+
+            persisted = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
+
+        self.assertNotIn("TEST_PERSON", persisted)
+        self.assertNotIn("TEST_HEALTH_DETAIL", persisted)
+        self.assertNotIn("TEST_ACCESS_TOKEN", persisted)
+        self.assertNotIn("TEST_UNTRUSTED", persisted)
+
+    def test_audit_logger_rejects_free_text_action_and_outcome_before_persistence(self) -> None:
+        """action/outcome 也是日志字段，不能接收调用方注入的任意自由文本。"""
+
+        from general_ai_business_os.audit.logger import AuditLogger
+
+        with tempfile.TemporaryDirectory() as directory:
+            log_path = Path(directory) / "audit.jsonl"
+            logger = AuditLogger(log_path)
+            with self.assertRaisesRegex(ValueError, "audit_action_invalid"):
+                logger.record(
+                    action="unsafe free text",
+                    outcome="blocked",
+                    details={"safe_code": "TEST_VALUE"},
+                )
+            with self.assertRaisesRegex(ValueError, "audit_outcome_invalid"):
+                logger.record(
+                    action="adapter.request",
+                    outcome="unsafe free text",
+                    details={"safe_code": "TEST_VALUE"},
+                )
+
+            persisted = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
+
+        self.assertEqual("", persisted)
 
     def test_mock_adapter_reports_dry_run_without_external_execution(self) -> None:
         """Mock 可以验证调用合同，但必须明确它没有触发外部副作用。"""
@@ -66,6 +115,34 @@ class GeneralFoundationTests(unittest.TestCase):
         self.assertEqual("BLOCKED", result.status.value)
         self.assertFalse(result.executed)
         self.assertEqual("external_actions_disabled", result.reason)
+
+    def test_mock_adapter_stays_non_executing_even_when_policy_allows_the_request(self) -> None:
+        """Mock 的许可只用于合同演练，不能被误报为真实执行。"""
+
+        from general_ai_business_os.adapters.mock import MockAdapter
+        from general_ai_business_os.config import SystemConfig
+        from general_ai_business_os.permissions.policy import PermissionPolicy
+
+        result = MockAdapter(capability="content.image").execute(
+            operation="generate",
+            payload={"request_id": "TEST_REQUEST"},
+            permission=PermissionPolicy(SystemConfig(external_actions_allowed=True)).authorize("content.generate"),
+        )
+
+        self.assertEqual("MOCK", result.status.value)
+        self.assertFalse(result.executed)
+        self.assertEqual("mock_dry_run", result.reason)
+
+    def test_permission_policy_denies_empty_action(self) -> None:
+        """空动作不允许落入默认分支，避免未知调用被误授权。"""
+
+        from general_ai_business_os.config import SystemConfig
+        from general_ai_business_os.permissions.policy import PermissionPolicy
+
+        decision = PermissionPolicy(SystemConfig()).authorize(" ")
+
+        self.assertFalse(decision.allowed)
+        self.assertEqual("action_required", decision.reason)
 
     def test_sqlite_store_round_trips_generic_record_through_neutral_port(self) -> None:
         """领域存储只使用通用 record 合同，不含任何业务或平台专属列。"""
@@ -111,6 +188,16 @@ class GeneralFoundationTests(unittest.TestCase):
             )
         finally:
             server.server_close()
+
+    def test_local_api_rejects_every_non_loopback_host(self) -> None:
+        """localhost 与 IPv6 也不作为隐式例外，防止运行环境差异扩大监听范围。"""
+
+        from general_ai_business_os.config import SystemConfig
+        from general_ai_business_os.interfaces.local_api import LocalApiApplication
+
+        for host in ("0.0.0.0", "localhost", "::1"):
+            with self.assertRaisesRegex(ValueError, "local_api_requires_loopback_host"):
+                LocalApiApplication(SystemConfig(api_host=host)).create_server()
 
     def test_cli_system_init_creates_local_state_without_enabling_external_actions(self) -> None:
         """CLI 初始化本地状态，但输出必须证明外部动作仍然关闭。"""
