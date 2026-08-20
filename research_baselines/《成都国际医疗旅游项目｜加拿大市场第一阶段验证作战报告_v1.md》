@@ -1,0 +1,816 @@
+# 成都国际医疗旅游项目｜加拿大市场第一阶段验证作战报告_v1
+
+> **文档状态：** `Research（研究）` / `Fact candidate（事实候选）` / `Inference（推断）` / `Hypothesis（假设）` / `Recommendation（建议）`；不是 `Decision（正式决策）`。<br>
+> **研究日期：** 2026-08-20<br>
+> **唯一研究对象：** `Canada（加拿大）`，仍为 `Market Candidate（市场候选）`。<br>
+> **作战问题：** 如果未来由用户与 ChatGPT 选择加拿大作为第一验证市场，如何在 30–60 天内、以最低成本验证是否存在愿意来到成都接受医疗相关服务的真实客户？<br>
+> **当前执行边界：** GitHub `main` 仍为 `strategy_definition_pending（战略定义中）`，`external_execution_allowed: false`。本报告只生成可执行设计、草稿话术、内容库、指标和停止线；不授权发布、私信、投放、收款、联系机构或接收患者资料。
+
+---
+
+## 0. 先给结论｜如果明天获准开始，先做什么
+
+### 0.1 第一轮固定组合｜Recommendation（建议，不是 Decision）
+
+```text
+Market Candidate：Canada（加拿大）
+        ↓
+Customer Segment：有中国旅行/生活/家庭网络经验、可安排非紧急跨境旅行的加拿大居民
+        ↓
+Product Hypothesis：Chengdu International Care Readiness Consultation
+                     （成都国际就医准备咨询，仅非临床）
+        ↓
+Primary Channel：YouTube
+Secondary Channel：Instagram
+Research Channel：Google Search + Reddit
+Conversion Channel：Landing Page + consent-based email / booking
+        ↓
+Primary CTA：Get the 10-point Chengdu care-travel readiness checklist
+        ↓
+30-day outcome：continue / hold / stop evidence package
+```
+
+选择这条路线不是因为该细分已经被证明有需求，而是因为它同时降低三个首轮障碍：
+
+1. 对中国/成都的陌生感可能较低，能更快暴露真正的医疗信任障碍，而不是只得到“我不去中国”的泛拒绝；
+2. 可以先测试非临床流程、责任、语言和信息透明度，不需要先承诺医院、病种、价格或疗效；
+3. 英语内容可直接在加拿大主流搜索与视频渠道验证，资产成本低、可复用、可停止。
+
+### 0.2 第一轮不是卖医疗产品
+
+第一轮只验证五层意愿是否按顺序存在：
+
+```text
+有真实问题
+  ↓
+愿意了解跨境选项
+  ↓
+不排斥成都
+  ↓
+愿意为非临床准备/协调进入人工沟通
+  ↓
+未来在书面供给与专业闸门后，是否愿意看正式方案
+```
+
+前四层可以在不收病历、不报价、不承诺医院的情况下形成研究证据；第五层以后必须另过 `Supply Gate（供给闸门）`、专业复核和用户授权。
+
+### 0.3 最重要的判真规则
+
+- 点赞、播放、收藏、泛问价：不是需求证明。
+- 主动填写合规表单：只是 `Lead（线索）`，不是客户。
+- 明确居住加拿大、接受成都目的地、接受非临床边界、具有现实旅行窗口并愿意参加人工准备咨询：才是 `Qualified Lead（有效线索）`。
+- 机构书面接受、正式报价、真实支付/订金、实际到达：才逐步接近真实客户证据；均不在本报告当前执行范围。
+
+---
+
+## 1. 事实基线与加拿大研究边界
+
+### 1.1 Confirmed fact（已确认事实）
+
+1. 项目没有已记录的加拿大正式市场决策；市场、产品、价格、渠道、验证顺序和 Go / No-Go 仍为 `pending_decision（待决策）`。[F-01]
+2. 上一份市场评分报告只建议“先验证加拿大假设”，没有把加拿大升级为首发市场。[F-02]
+3. 当前系统已实现 `DemandRadar`、`ProductCatalog`、内容草稿、匿名线索、风险路由、实验和周复盘；现实 adapter（外部适配器）仍为 Mock / disabled。[F-03]
+4. 当前没有已确认的成都机构合作、外籍流程、正式价格、合规许可、客户、付款、交付或经营指标。[F-01]
+
+### 1.2 加拿大公开证据能证明什么
+
+| 公开证据 | 可以支持的 `Fact candidate` | 不能推出的结论 |
+| --- | --- | --- |
+| CIHI 2026 等待时间资料 | 加拿大多个医疗场景存在等待压力，值得测试“等待/信息透明”语言 | 等待者愿意跨境，更不能推出愿意来成都 [CA-01] |
+| Statistics Canada 2023–24 口腔健康研究 | 牙科成本、保险缺口和延迟就诊是真实问题线索 | 成都牙科更便宜、更好或可交付 [CA-02] |
+| 2021 Census 与 2026 华人画像 | 加拿大存在规模可观、内部高度多样的华人和亚洲移民群体 | 华人天然信任中国医疗、愿意来成都或支付服务费 [CA-03] |
+| 加拿大互联网/社媒调查 | YouTube、Facebook、Instagram 等具有广泛覆盖，Reddit 对部分年龄层有研究价值 | 任一渠道对本项目 CAC 低、能带来客户 [CA-04] |
+| 2026 阶段性免签信息 | 当前时间窗口内，部分加拿大普通护照持有人赴华旅行摩擦可能降低 | 医疗事由、具体个案、未来日期一定适用或入境获得保证 [CA-05] |
+| 华西医院公开国际医疗中心页面 | 成都存在未来可核验的国际医疗供给线索 | 医院合作、可售服务、英文交付、价格、排期或 SLA [CD-01] |
+
+### 1.3 当前关键 Unknown（未知）
+
+- 有多少加拿大居民主动考虑中国或成都作为医疗相关目的地；
+- 哪个产品、专科或非临床服务能产生真实支付；
+- 加拿大保险、雇主福利或政府计划是否以及如何覆盖境外服务；
+- 加拿大到成都当前的真实航线、总时间、成本与可接受性；
+- 成都机构是否能书面支持外籍流程、英文材料、价格、异常/转诊、随访和数据处理；
+- 在不承诺价格/医院/疗效时，内容是否仍能产生有效线索；
+- 实际获客成本、线索到付费、付费到成行的转化率。
+
+本报告的 30–60 天设计就是为了低成本减少这些未知，而不是用宏观数据填空。
+
+---
+
+## 2. Canada Customer Segmentation（加拿大客户细分）
+
+### 2.1 10 个候选用户群
+
+| ID | Customer Segment（客户细分） | 为什么可能需要 / 痛点 | 支付可能性 | 信任障碍 | 为什么可能考虑成都 | 最大反证 | 最低成本验证方式 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| CS-01 | 有中国旅行/生活/家庭网络经验、可安排非紧急旅行的加拿大居民 | 对中国流程不完全陌生，但可能缺医院导航、语言、责任和总成本信息 | 中；须由预算/下一步意愿验证 | 医疗质量、供给证明、回加随访 | 已有中国接受度；成都可作为具体目的地被单独验证 | 熟悉中国不等于信任成都医疗；可能只为旅游 | 非临床“成都就医准备清单”内容 + opt-in 咨询 |
+| CS-02 | 等待非紧急公立服务、主动研究替代路径的人群 | 等待、信息不透明、时间不可控 | 中；长途旅行总成本可能抵消 | 安全、连续照护、是否值得远行 | 若成都能提供可核验流程和时间，可能产生比较意愿 | 等待者可能没有医学/旅行适格性，也更偏向加拿大私立或邻近国家 | 等待主题内容；只问选择前提，不问诊断 [CA-01] |
+| CS-03 | 无牙科保险或自付比例高、主动比较牙科费用的人群 | 牙科成本和保险缺口；Statistics Canada 显示成本相关延迟就诊 | 中低至中；痛点强但支付能力可能弱 | 牙科质量、复诊、并发症、报价真实性 | 只有在书面供给/总成本具优势时才可能考虑 | 痛点来自“付不起”，未必负担得起跨境旅行 | “总成本与风险清单”内容，不发成都价格 [CA-02] |
+| CS-04 | 健康检查/预防型服务探索者 | 希望一次性完成信息整合、检查与报告沟通 | 中高；属于自费选择 | 检查必要性、过度检查、报告连续性 | 成都生活成本/城市体验可能是辅助因素 | 加拿大本地套餐更方便；没有成都供给与价格证明 | 测试“你需要什么证据才会考虑境外体检” |
+| CS-05 | 寻找 Medical Second Opinion（医疗第二意见）路径的人群 | 希望理解另一个机构的评估或资料准备路径 | 中；但临床和数据要求高 | 医疗资料跨境、医生资质、意见责任 | 华西等公开资源可能引发信息需求，但不能承诺 | 没有批准的安全资料系统和机构流程；当前不可执行 | 只测试“第二意见准备/问题清单”需求，不收资料 |
+| CS-06 | 企业高管/创业者的 Executive Health（高端健康管理）人群 | 时间价值高，希望集中安排、语言和日程协调 | 高；需真实预算和雇主/个人支付证据 | 服务质量、隐私、时间可靠性 | 成都可结合商务/家庭/文化行程，但医疗价值须独立证明 | 可能更偏好美国、欧洲、新加坡等成熟路径 | LinkedIn/YouTube 教育内容 + 人工非临床访谈；不与 B2C 首轮混测 |
+| CS-07 | 退休或接近退休、具旅行能力和自费能力的人群 | 健康管理、牙科、慢性需求的信息协调 | 中高；但保险和身体条件差异大 | 长途旅行、紧急情况、随访、陪同 | 时间安排可能更灵活，成都生活体验是辅助 | 医疗风险和旅行负担可能直接否定跨境方案 | 只测试行程/陪同/随访前提；排除急症和临床筛选 |
+| CS-08 | 华人加拿大居民/中国出生移民 | 可能有语言、家人或既往中国就医经验 | 差异极大，不能由族裔推断 | 对国内医疗体验分化、隐私、营销刻板化 | 语言/家庭网络可能降低部分目的地摩擦 | 华人身份不是需求、支付或信任证明；敏感定向有风险 | 在自愿社区研究中按行为而非族裔筛选 [CA-03] |
+| CS-09 | 长期居住加拿大、具亚洲旅行经验的其他亚洲移民 | 可能熟悉跨境家庭/旅行安排，关注费用和语言 | 差异大 | 中国目的地接受度、语言与文化差异 | 成都可作为亚洲目的地之一被比较 | “亚洲移民”过宽，可能制造虚假细分 | 公开研究中只记录自述旅行经验，不按族裔自动归类 |
+| CS-10 | 已在主动研究 Medical Travel（医疗旅行）的人群 | 已进入目的地/价格/质量比较阶段 | 中高；行为信号强 | 被竞品占据、对成都缺证据 | 成都若有清晰差异与书面供给，可进入比较集 | 可能只搜成熟目的地；成都根本不在考虑范围 | Google/Reddit 语义研究 + 固定成都准备页；看是否主动加入比较 |
+
+### 2.2 Top 3 优先测试用户群｜Recommendation
+
+#### Top 1：CS-01 中国经验 + 非紧急旅行能力人群
+
+- **为什么先测：** 最大程度降低“从未考虑中国”的噪音，优先验证成都医疗信任、流程透明和协调价值。
+- **成功证据：** 主动索取清单、接受非临床边界、愿意说明旅行窗口/信息需要、愿意参加人工准备咨询。
+- **反证：** 只有旅游兴趣，无医疗相关下一步；或熟悉中国但明确不接受成都医疗供给。
+
+#### Top 2：CS-03 牙科成本/保险缺口 + 中国旅行开放度人群
+
+- **为什么第二：** 牙科成本痛点有加拿大官方数据，容易形成明确的价格与风险问题。[CA-02]
+- **为什么不第一：** “因成本延迟就诊”也可能意味着无法承担国际旅行；成都牙科价格和供给均未核验。
+- **第一轮只测：** 总成本透明、复诊/并发症/报价证据需求；不展示价格差，不推荐治疗。
+
+#### Top 3：CS-02 非紧急等待 + 主动研究替代路径人群
+
+- **为什么第三：** 等待线索明确，但从等待到跨境是最长的推断链。[CA-01]
+- **第一轮只测：** 在不承诺更快的前提下，用户是否愿意了解跨境评估清单、时间和责任。
+- **反证：** 用户只需要加拿大本地加速方案，或医学/旅行条件不允许跨境。
+
+### 2.3 第一轮禁止的细分方式
+
+- 不按诊断、病史、用药、残疾或推测健康状况定向广告；
+- 不把“华人/亚洲移民”当作自动高意向标签；
+- 不建立公开账号到个人身份的名单；
+- 不以急症、重病焦虑、疗效恐惧或保险缺口进行高压营销；
+- 不将未成年人纳入第一轮。
+
+---
+
+## 3. Product Hypothesis（加拿大产品假设）
+
+产品分级的含义：`P0` 可先非临床验证；`P1` 只有获得供给/责任书面证据后才能受监督试用；`P2` 依赖医疗、法律、数据、旅行和机构深度审查，本轮不得执行。
+
+### 3.1 11 个候选产品
+
+| ID / 分级 | Product Hypothesis（产品假设） | 用户为什么可能买 | 谁付款 / 购买触发 | 主要阻力 | 医院合作 | 医疗边界 | 可否先非临床验证 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PH-01 / P0 | Chengdu International Care Readiness Consultation（成都国际就医准备咨询） | 把“能不能考虑成都”拆成责任、语言、时间、成本和证据问题 | 个人；准备认真比较目的地时 | 没有具体医院/价格时价值是否足够 | 不需要做需求测试 | 不判断医学适格性 | **可以；第一主假设** |
+| PH-02 / P0 | China Healthcare Experience Consultation（中国医疗体验咨询） | 了解中国医院角色、流程和跨境准备 | 个人；已有中国旅行/家庭网络 | 过于泛化，不能证明成都意愿 | 不需要做需求测试 | 只能讲公开流程和核验问题 | 可以；作为教育入口 |
+| PH-03 / P0 | Medical Travel Evidence Checklist（医疗旅行证据清单） | 避免只看低价/宣传，知道要问什么 | 个人；正在比较目的地 | 免费清单可能只带来泛兴趣 | 不需要 | 风险教育，不做推荐 | 可以；主要 CTA 资产 |
+| PH-04 / P1 | International Patient Concierge（国际患者协调服务） | 希望有人协调角色、日程、资料交接和非临床支持 | 个人/家庭；已认可成都并进入规划 | 责任范围、退款、价格、医院接口 | **需要**至少书面外籍流程与联系人 | 不替代医疗/旅行主体 | 只能先测试价值理解 |
+| PH-05 / P1 | Medical Translation Assistance（医疗语言协调） | 降低预约、现场和材料沟通摩擦 | 个人/家庭；确定跨境流程后 | 翻译资质、临床误译、数据安全 | 需要机构语言/材料流程 | 不解释诊断/治疗 | 可先测语言痛点，不能交付 |
+| PH-06 / P1 | Hospital Navigation Service（医院流程导航） | 需要预约、到院、科室与报告交接组织 | 个人；已有明确非临床流程需求 | 机构权限、排期、拒绝机制 | **必须需要** | 不推荐医生/治疗，不保证名额 | 可先测流程痛点 |
+| PH-07 / P1 | Dental Cost & Risk Comparison（牙科成本与风险比较） | 希望比较总成本、复诊和风险，而非单项低价 | 个人；遇到自付/保险缺口 | 无成都书面价、复诊和并发症责任 | **必须需要**牙科供给/价格 | 不能建议治疗方案 | 只能测试比较框架需求 |
+| PH-08 / P2 | Medical Second Opinion Coordination（医疗第二意见协调） | 希望获得另一机构评估与资料准备帮助 | 个人/保险/家庭 | 病历、同意、跨境数据、医生责任 | **必须需要**临床主体和安全系统 | 高医疗/隐私边界 | 只能测试非临床准备需求 |
+| PH-09 / P2 | Health Check Travel Package（健康检查旅行套餐） | 集中完成健康检查与成都行程 | 个人/雇主 | 检查必要性、价格、报告、过度检查、旅行责任 | **必须需要** | 临床适用性由机构决定 | 只能测试证据/流程需求 |
+| PH-10 / P2 | Specialty Medical Pathway（专科医疗路径） | 为特定专科寻找可验证的跨境路径 | 个人/保险/家庭 | 病种适格性、疗效、连续照护、广告限制 | **必须需要**专科主体 | 高风险，不得自动匹配 | 本轮不测试具体专科 |
+| PH-11 / P2 | Executive Health / Recovery + Chengdu Stay（高端健康管理/恢复期成都生活服务） | 希望高触点日程、生活与非临床支持 | 个人/雇主 | 服务边界、恢复医学适格性、旅行责任 | **必须需要**多主体 SLA | 恢复建议由专业主体负责 | 仅可测试生活/协调价值 |
+
+### 3.2 P0 / P1 / P2 排序
+
+```text
+P0（现在可准备、获渠道授权后可做需求验证）
+1. PH-01 成都国际就医准备咨询
+2. PH-03 医疗旅行证据清单
+3. PH-02 中国医疗体验咨询
+
+P1（需求信号后，且 Supply Gate 有书面证据）
+4. PH-04 国际患者协调
+5. PH-05 医疗语言协调
+6. PH-06 医院流程导航
+7. PH-07 牙科成本与风险比较
+
+P2（专业/机构/数据/合同闸门后才可研究执行）
+8. PH-08 第二意见协调
+9. PH-09 健康检查旅行套餐
+10. PH-10 专科医疗路径
+11. PH-11 高端健康管理/恢复期成都生活服务
+```
+
+### 3.3 第一轮唯一 Product Hypothesis
+
+> **Hypothesis H-P0-01：** 对中国不完全陌生、可安排非紧急旅行的加拿大居民，会为了理解成都就医所需的证据、角色、语言、时间、总成本和责任，索取一份清单，并有一部分愿意进入人工、非临床的准备咨询。
+
+这条假设可以在没有医院合作、没有价格、没有病种承诺时被推翻。它若成立，也只证明“准备/协调问题值得继续”，不证明任何医疗产品可售。
+
+---
+
+## 4. Canada Channel Analysis（加拿大渠道分析）
+
+### 4.1 渠道矩阵
+
+`CAC（获客成本）`在没有真实投放/人工工时数据前只标为 `Hypothesis`；低/中/高是相对验证成本，不是已观测金额。
+
+| Channel（渠道） | 用户状态 | 适合产品 / 内容 | CAC 假设 | 验证速度 | 第一阶段建议 | 原因与边界 |
+| --- | --- | --- | --- | --- | --- | --- |
+| YouTube | 主动搜索 + 被动发现 | PH-01/02/03；流程解释、风险教育、成都证据 | 低至中（制作成本） | 中 | **Primary** | 加拿大覆盖广、可做长短视频、搜索寿命长；适合建立医疗信任 [CA-04] |
+| Instagram | 被动发现 + DM | PH-01/03；短视频、图卡、FAQ | 低至中 | 快 | **Secondary** | 便于复用 Shorts 和建立人工入口；DM 只作桥接，不接病历 |
+| TikTok | 被动发现 | 风险教育、误解纠正、短 Hook | 低至中 | 快 | 第二轮候选 | 快速但意图浅、地域归因和医疗政策风险需实测；不与首轮主渠道混测 |
+| Google Search | 主动搜索 | PH-01/03/07；清单、流程、总成本框架 | SEO 低但慢；Ads 中高 | 研究快/SEO 慢 | **Research** | 用于理解真实问题语言；医疗相关个性化广告受限 [CA-06] |
+| SEO | 主动搜索 | 长文 FAQ、风险清单、成都供给证据解释 | 前期中、边际低 | 慢 | 支撑资产 | 30 天难单独证明需求；只作为落地页和长期来源 |
+| Reddit | 社区讨论 + 主动研究 | 痛点、反对原因、目的地比较 | 低人工/高规则风险 | 快 | **Research** | 适合发现原话与反证；不抓取身份、不私信、不假装患者、不破坏群规 |
+| Facebook Groups | 社区讨论 + 转介绍 | 华人/移民/旅行群的非推销教育 | 低人工/中信任成本 | 中 | 条件性辅助 | 只有群规和管理员允许才可参与；不按健康状况找人 |
+| Quora | 主动问答 | 公开流程、误解纠正 | 低 | 慢至中 | 研究/SEO 辅助 | 问题可提供搜索语言；转化和加拿大归因弱 |
+| 医疗旅游论坛 | 主动搜索 | 风险、责任、目的地比较 | 中 | 中 | 观察，不先推广 | 用户意图可能高，但竞品密集、广告/版规和真实性需核验 |
+| 华人社区 | 社区讨论 + 转介绍 | PH-01/02；中国/成都流程和语言 | 低至中 | 中 | 条件性辅助 | 以自愿行为/中国经验筛选，不把华人身份当需求；需双语和社区授权 [CA-03] |
+| 移民社区 | 社区讨论 | 跨境生活/家庭网络下的流程准备 | 低至中 | 中 | 研究 | 群体过宽；只研究公开问题，不做族裔/健康画像 |
+| 保险/雇主渠道 | 转介绍/B2B | PH-06/09/11 | 高前置成本 | 慢 | 60 天后另轨 | 合同、保险覆盖、利益冲突和专业责任复杂，不能与 B2C 首轮混测 |
+| B2B 医疗代理 | 转介绍/B2B | PH-04/06/08/10 | 中高 | 中 | 暂不推荐 | 可能更快带客，但会遮蔽终端需求、返佣/责任/数据风险高 |
+
+### 4.2 Canada First Validation Channel Stack（加拿大第一验证渠道组合）
+
+| 角色 | 选择 | 本轮用途 | 因果解释边界 |
+| --- | --- | --- | --- |
+| Primary Channel（主渠道） | **YouTube** | 4 条长视频 + 12 条 Shorts；固定市场、产品、CTA，只比较 Hook | 只用 YouTube 主数据判断 Hook；不把其他渠道流量混入 |
+| Secondary Channel（辅助渠道） | **Instagram** | 24 小时后原样复用 Shorts；承接公开评论/DM 到安全落地页 | 只观察可达性与问题类型，不与 YouTube 做优劣结论 |
+| Research Channel（研究渠道） | **Google Search + Reddit** | 记录公开问题语言、信任障碍、价格/等待反对 | 不抓个人名单、不主动私信、不把帖子数当 Demand |
+| Conversion Channel（转化渠道） | **固定 Landing Page + consent-based email/booking** | 领取清单、匿名意向字段、申请人工非临床咨询 | 表单不收病历/诊断/证件/支付；DM 不是 CRM |
+
+### 4.3 为什么首轮不把 Google Ads 或 B2B 当主渠道
+
+- 付费搜索能更快获得意图，但会同时引入预算、关键词、竞价、落地页、医疗广告审核等变量；当前也未授权投放。
+- Google 明确限制基于健康状况的个性化广告使用；所有广告、再营销和表单需重新做平台与专业复核。[CA-06]
+- B2B 代理可能带来线索，但无法回答终端客户为什么选择成都，也会引入转介费用、利益冲突、合同和数据责任。
+
+---
+
+## 5. Canada → Chengdu Content Strategy（加拿大到成都内容策略）
+
+### 5.1 内容共同规则
+
+所有内容都必须满足：
+
+- 只使用可回读的公开事实；没有来源的价格、等待、医院能力和旅行信息不发布；
+- 不把“更便宜、更快、更好”写成结论，不作诊断、治疗建议、疗效或名额保证；
+- 成都的熊猫、美食、文化、住宿和生活方式只能解释目的地体验，不能证明医疗质量；
+- 所有 CTA（行动号召）统一指向 `PH-03 Medical Travel Evidence Checklist（医疗旅行证据清单）`；
+- Landing Page（落地页）固定，不按健康状况做追踪或再营销；
+- 评论/DM 出现病历、诊断、急症、未成年人、支付或证件信息时，停止并交由人工安全流程。
+
+### 5.2 指标缩写
+
+| 缩写 | 含义 |
+| --- | --- |
+| CV | Canada-attributed relevant view（加拿大归因的相关观看，平台聚合口径） |
+| LPV | Landing Page View（落地页访问） |
+| CTR | Content-to-Landing Page click-through rate（内容到落地页点击率） |
+| CTA | 清单领取/咨询意向提交 |
+| QL | Qualified Lead（有效非临床线索） |
+| HI | High-intent Lead（高意向线索） |
+| OB | Objection tag（反对原因标签） |
+
+### 5.3 50 个内容主题
+
+#### A. Cost Difference（价格差）｜COST-01–05
+
+| Content ID | 目标用户 | 产品假设 | Hook（英文） | 核心信息 | CTA（英文） | 验证目的 | 主指标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| COST-01 | CS-03 | PH-03/07 | “A cheaper quote is not the real total cost.” | 必须分开医疗主体、旅行、协调、复诊、取消和意外费用 | “Get the three-ledger comparison checklist.” | 用户是否重视总成本透明而非低价 | CTR、CTA、OB-price |
+| COST-02 | CS-01/10 | PH-01/03 | “Before comparing Canada and Chengdu, separate these three bills.” | 医疗费、旅行费、协调费的主体和责任不能混在一起 | “Download the cost-and-responsibility map.” | 三账结构是否提高可信度 | Save、CTA、trust comments |
+| COST-03 | CS-03/04 | PH-03 | “Five costs medical travellers often forget.” | 陪同、翻译、复诊、改期、回国随访必须计入 | “Use the 10-point readiness checklist.” | 隐性成本是否是真实阻力 | Watch completion、CTA |
+| COST-04 | CS-02/03 | PH-03 | “Why we will not promise you’ll save 60%.” | 无书面同类价格、范围和有效期时不能承诺节省比例 | “See what evidence a real comparison needs.” | 反低价话术是否增加信任 | Positive trust replies、CTA |
+| COST-05 | CS-01/10 | PH-01 | “When staying in Canada may still be the better choice.” | 长途旅行、连续照护、保险和家属成本可能使本地更合适 | “Check your non-clinical decision factors.” | 愿意接受反向建议的人是否更高意向 | QL rate、OB-local-alternative |
+
+#### B. Waiting Time（等待时间）｜WAIT-01–05
+
+| Content ID | 目标用户 | 产品假设 | Hook（英文） | 核心信息 | CTA（英文） | 验证目的 | 主指标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| WAIT-01 | CS-02 | PH-01/03 | “A long wait does not automatically make medical travel right for you.” | 等待只是问题线索，医学适格、旅行和随访需专业判断 | “Get the readiness questions first.” | 是否存在理性跨境探索意愿 | CTA、OB-wait |
+| WAIT-02 | CS-02 | PH-03 | “What Canada’s wait-time data can—and cannot—tell you.” | 官方统计描述系统等待，不预测个人路径或成都选择 | “Use the evidence checklist.” | 数据教育能否吸引目标人群 | CV-to-LPV CTR |
+| WAIT-03 | CS-02/10 | PH-01 | “Three questions to ask before looking abroad because of a wait.” | 紧急性、连续照护、可验证供给三问 | “Download the three-question card.” | 哪个前提最影响下一步 | CTA answers、OB tags |
+| WAIT-04 | CS-01/02 | PH-01 | “Could your timeline realistically support care in Chengdu?” | 不承诺时间，只列旅行、评估、返程和随访的计划要素 | “Check your planning window.” | 现实旅行窗口是否存在 | Self-reported timeframe、QL |
+| WAIT-05 | CS-02 | PH-01 | “If your Canadian wait disappeared tomorrow, would Chengdu still interest you?” | 区分纯等待痛点与对成都/协调价值的独立兴趣 | “Tell us which factor still matters.” | 验证需求是否只依赖等待 | Response reason distribution |
+
+#### C. Healthcare Education（医疗教育）｜EDU-01–05
+
+| Content ID | 目标用户 | 产品假设 | Hook（英文） | 核心信息 | CTA（英文） | 验证目的 | 主指标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| EDU-01 | 全部 | PH-02/03 | “Medical travel and medical coordination are not the same service.” | 持证医疗、旅行、翻译和协调主体必须分开 | “Get the role-and-responsibility map.” | 用户能否理解协调价值 | CTA、role questions |
+| EDU-02 | CS-05 | PH-03/08 | “A second opinion is not a guarantee of a different answer.” | 第二意见需合格机构、完整资料、同意和安全传输 | “See the preparation checklist—do not send records.” | 第二意见需求是否可在边界内表达 | Safe CTA、risk triggers |
+| EDU-03 | CS-01/02/07 | PH-03 | “Your care plan does not end when your flight leaves Chengdu.” | 回加后的记录、复诊、异常升级与责任需预先明确 | “Add aftercare to your checklist.” | 连续照护是否为核心阻力 | OB-aftercare、CTA |
+| EDU-04 | 全部 | PH-03 | “An English website is not proof of international patient readiness.” | 需书面语言、价格、联系人、报告和异常流程 | “Ask for these six pieces of evidence.” | 用户是否重视书面证据 | Saves、CTA |
+| EDU-05 | 全部 | PH-03 | “Please don’t send medical records in social media DMs.” | 社媒不是患者资料系统；敏感问题转专业渠道 | “Use the non-clinical enquiry form.” | 安全边界是否被接受 | Safe form completion、risk events |
+
+#### D. China Healthcare Explanation（中国医疗解释）｜CHN-01–05
+
+| Content ID | 目标用户 | 产品假设 | Hook（英文） | 核心信息 | CTA（英文） | 验证目的 | 主指标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| CHN-01 | CS-01/08 | PH-02 | “Who does what in a China care journey?” | 医院、医生、翻译、旅行伙伴、协调方的职责不同 | “Download the role map.” | 角色混乱是否为需求 | CTA、role OB |
+| CHN-02 | CS-01/10 | PH-02/06 | “Hospital navigation is not medical advice.” | 导航只组织流程，不选择诊疗或替医生回答 | “See the navigation boundary.” | 非临床服务是否有独立价值 | QL comments、CTA |
+| CHN-03 | CS-01/08 | PH-02/05 | “Translation, interpretation and clinical explanation are different.” | 语言协助不能代替临床解释和知情同意 | “Get the language-support questions.” | 语言痛点强度 | OB-language、CTA |
+| CHN-04 | CS-01/10 | PH-02/03 | “What must be verified before any China hospital name appears in a plan?” | 外籍流程、范围、价格、语言、异常/转诊、品牌授权 | “Use the provider-evidence checklist.” | 用户是否要求医院证据 | CTA、hospital questions |
+| CHN-05 | CS-01/08 | PH-02 | “China experience helps—but it does not prove medical fit.” | 旅行熟悉度只降低目的地陌生，不替代医疗适格 | “Check the remaining five gaps.” | 测试 China familiarity 的真实作用 | QL vs tourism-only ratio |
+
+#### E. Chengdu Trust Building（成都信任建立）｜CDT-01–05
+
+| Content ID | 目标用户 | 产品假设 | Hook（英文） | 核心信息 | CTA（英文） | 验证目的 | 主指标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| CDT-01 | CS-01/10 | PH-01 | “Why Chengdu is a candidate—not a promise.” | 解释公开供给线索、城市体验和仍需补证的边界 | “See the Chengdu evidence map.” | 坦诚未知是否建立信任 | Completion、CTA |
+| CDT-02 | 全部 | PH-01/03 | “A famous hospital name is not a patient pathway.” | 机构声誉不能替代书面外籍流程、价格和责任 | “Ask for pathway evidence.” | 用户是否区分品牌与交付 | Saves、hospital OB |
+| CDT-03 | CS-01/07 | PH-01 | “What would make you trust Chengdu enough to keep researching?” | 让用户在供给、语言、价格、随访、旅行中排序 | “Choose your top two proof points.” | 找出第一信任门槛 | Proof-point ranking |
+| CDT-04 | CS-01/04 | PH-01 | “Pandas and food can support a trip—but never prove medical quality.” | 城市吸引力只在医疗适格和供给证据之后发挥作用 | “See the medical-vs-destination checklist.” | 生活内容是否吸引错误流量 | Tourism-only ratio |
+| CDT-05 | CS-01/10 | PH-01 | “The six documents we would need before calling Chengdu ‘ready.’” | 列出外籍流程、范围、书面价、语言、异常、随访 | “Get the six-document list.” | 供给透明是否是转化条件 | CTA、QL trust theme |
+
+#### F. International Patient Journey（国际患者流程）｜JRN-01–05
+
+| Content ID | 目标用户 | 产品假设 | Hook（英文） | 核心信息 | CTA（英文） | 验证目的 | 主指标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| JRN-01 | CS-01/10 | PH-01/04 | “A Canada-to-Chengdu care journey has at least nine gates.” | 从研究、机构评估、报价、旅行、到院到随访的闸门 | “Download the nine-gate map.” | 完整流程是否产生协调需求 | CTA、QL |
+| JRN-02 | CS-01/07 | PH-01 | “What should happen before you book a flight?” | 机构接受、书面范围/价、责任、保险/旅行专业复核 | “Use the pre-flight checklist.” | 用户是否理解不得先订票 | Saves、OB-timing |
+| JRN-03 | CS-01 | PH-04/06 | “What a coordinator can—and cannot—do on arrival.” | 日程/语言/交接可协调，临床决定归机构 | “See the coordinator boundary.” | 协调价值理解 | CTA、role clarity |
+| JRN-04 | CS-07 | PH-04/11 | “Recovery support is not medical recovery advice.” | 生活协助与临床恢复计划必须分离 | “Get the responsibility map.” | 恢复期生活服务需求 | QL、risk triggers |
+| JRN-05 | 全部 | PH-01/03 | “Cancellation and ‘no longer eligible’ need a written path.” | 拒绝、改期、退款和紧急情况需预先说明 | “Add the stop rules to your checklist.” | 风险透明是否影响信任 | CTA、OB-refund |
+
+#### G. FAQ｜FAQ-01–05
+
+| Content ID | 目标用户 | 产品假设 | Hook（英文） | 核心信息 | CTA（英文） | 验证目的 | 主指标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| FAQ-01 | 全部 | PH-01/03 | “How much would care in Chengdu cost?” | 当前无可承诺总价；正式比较需机构书面范围、有效期和三账 | “Get the cost-verification checklist.” | 问价者是否接受证据优先 | CTA-after-price、drop-off |
+| FAQ-02 | 全部 | PH-01/03 | “Which Chengdu hospital would you use?” | 公开线索不等于合作；不能在书面核验前推荐/保证 | “See what must be verified first.” | 医院名是否是必要信任条件 | OB-hospital、CTA |
+| FAQ-03 | 全部 | PH-03 | “Is medical travel to Chengdu safe?” | 不作安全保证；安全需机构能力、个体专业评估、旅行和应急路径 | “Review the risk questions.” | 安全阻力是否可被结构化 | OB-safety、risk exits |
+| FAQ-04 | CS-01/10 | PH-01 | “Do Canadians need a visa for China in 2026?” | 只引用当前官方窗口并要求出发前复核；不保证个案/未来政策 | “Check the official sources before travel.” | 旅行摩擦的实际影响 | Click to official source、OB-visa |
+| FAQ-05 | 全部 | PH-03 | “Will Canadian insurance reimburse care in China?” | 当前不作覆盖结论；用户须向保险/计划和专业方核验书面条件 | “Add reimbursement to your checklist.” | 保险是否为硬停止线 | OB-insurance、QL |
+
+#### H. Myth Breaking（误解纠正）｜MYTH-01–05
+
+| Content ID | 目标用户 | 产品假设 | Hook（英文） | 核心信息 | CTA（英文） | 验证目的 | 主指标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| MYTH-01 | CS-03/10 | PH-03/07 | “Cheaper does not mean better—and expensive does not mean safer.” | 比较必须同范围、同责任、同随访和同证据 | “Use the like-for-like checklist.” | 去低价化是否保留真实兴趣 | CTA、drop-off |
+| MYTH-02 | 全部 | PH-03 | “Medical tourism is not a vacation with an appointment.” | 医疗/旅行风险与责任必须先于城市体验 | “Review the nine gates.” | 是否过滤纯旅游兴趣 | Tourism-only ratio |
+| MYTH-03 | 全部 | PH-04/06 | “A concierge does not choose your treatment.” | 协调方不能作临床推荐或替医院承担责任 | “See the role boundaries.” | 用户是否接受责任分离 | Role-acceptance rate |
+| MYTH-04 | CS-01/08 | PH-02 | “Speaking Chinese does not remove the need for medical interpretation.” | 日常语言能力不等于临床沟通/知情同意能力 | “Get the language questions.” | 华人细分是否仍有语言需求 | OB-language、CTA |
+| MYTH-05 | 全部 | PH-03 | “Testimonials are not provider evidence.” | 个案评价不能证明资质、能力、适格或未来结果 | “Ask for documents, not promises.” | 证据型定位是否增加信任 | Saves、CTA |
+
+#### I. Medical Tourism Risk Education（医疗旅游风险教育）｜RISK-01–05
+
+| Content ID | 目标用户 | 产品假设 | Hook（英文） | 核心信息 | CTA（英文） | 验证目的 | 主指标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| RISK-01 | 全部 | PH-03 | “Seven red flags in any medical travel offer.” | 疗效保证、模糊主体、低价无范围、催付、无退款/随访/应急 | “Download the red-flag card.” | 风险教育内容是否吸引高质量用户 | Saves、CTA |
+| RISK-02 | 全部 | PH-03 | “Do not plan international travel for an emergency through social media.” | 急症应联系当地紧急/专业医疗服务，不走内容漏斗 | “Use local emergency services when urgent.” | 验证安全路由和错误流量 | Risk exits、zero unsafe replies |
+| RISK-03 | CS-05/10 | PH-03/08 | “Your medical records should not live in a DM thread.” | 健康资料敏感；需明确同意、最小收集与批准系统 | “Use only the non-clinical form here.” | 数据边界能否被理解 | Safe conversion rate、risk events |
+| RISK-04 | CS-02/07 | PH-03 | “Aftercare is part of the decision—not an afterthought.” | 回加复诊、记录交接、异常升级和责任需书面化 | “Add aftercare to your checklist.” | 随访是否为最大阻力 | OB-aftercare、CTA |
+| RISK-05 | 全部 | PH-03 | “What happens if the provider says no?” | 机构有权评估/拒绝；需退款、旅行改期和替代路径 | “Check the cancellation rules.” | 拒绝/取消透明是否影响信任 | OB-refund、QL |
+
+#### J. Lifestyle + Chengdu（生活方式 + 成都）｜LIFE-01–05
+
+| Content ID | 目标用户 | 产品假设 | Hook（英文） | 核心信息 | CTA（英文） | 验证目的 | 主指标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| LIFE-01 | CS-01/04 | PH-01 | “Could Chengdu work as a care-travel base—beyond the medical appointment?” | 住宿、陪同、交通、语言和安静日程都需核验，不作适格保证 | “Check the non-clinical stay factors.” | 城市支持是否提高成都接受度 | OB-destination、CTA |
+| LIFE-02 | CS-07 | PH-01/11 | “What would a travel companion need in Chengdu?” | 陪同者的住宿、沟通、时间和紧急联系人属于独立需求 | “Get the companion checklist.” | 家属/陪同价值是否真实 | Companion-interest rate |
+| LIFE-03 | CS-01/08 | PH-02 | “Family familiarity may help the trip—but who owns the care decisions?” | 家庭网络可辅助生活，不应代替机构/客户同意和责任 | “Use the responsibility map.” | 家庭网络是帮助还是风险 | OB-family-role、CTA |
+| LIFE-04 | 全部 | PH-01 | “Why Chengdu culture belongs after medical fit—not before it.” | 熊猫、美食和文化只在医疗/旅行适格后增加体验价值 | “Start with the readiness checklist.” | 是否过滤被旅游内容吸引的低质流量 | Tourism-only ratio |
+| LIFE-05 | CS-01/04/07 | PH-01 | “What would make a 7–10 day Chengdu stay feel manageable?” | 只询问非临床日程、语言、陪同、住宿和工作安排 | “Choose your biggest planning barrier.” | 找出目的地层硬阻力 | Barrier ranking、QL |
+
+### 5.4 首轮实际使用哪 16 条
+
+50 条是候选库，不是 30 天全部发布。第一实验选 8 个基础主题，每个主题生成 A/B 两个版本，共 16 条；**同一对的正文、证据、格式、时长、CTA 和发布规则完全相同，只改开场 Hook**。
+
+| 基础资产 | Content ID | A：Evidence / Trust Hook | B：Wait / Cost Hook | 产出 |
+| --- | --- | --- | --- | ---: |
+| Long 1 | JRN-01 | “What proof would you need before starting a Canada-to-Chengdu care journey?” | “A long wait is not enough reason to start a Canada-to-Chengdu care journey.” | 2 long |
+| Long 2 | RISK-01 | “Seven pieces of evidence that protect you from a risky medical-travel offer.” | “A low quote can hide these seven medical-travel risks.” | 2 long |
+| Short 1 | COST-02 | “Can you identify who owns each of these three bills?” | “A high Canadian quote still doesn’t make a Chengdu quote complete.” | 2 shorts |
+| Short 2 | WAIT-01 | “What evidence should come before a decision driven by waiting?” | “A long wait does not automatically make medical travel right.” | 2 shorts |
+| Short 3 | CDT-03 | “What proof would make Chengdu credible enough to research?” | “Would a shorter timeline make Chengdu credible—or is proof still missing?” | 2 shorts |
+| Short 4 | EDU-04 | “An English website is not evidence of international-patient readiness.” | “Faster or cheaper claims mean little without international-patient readiness.” | 2 shorts |
+| Short 5 | FAQ-02 | “Which documents should exist before a Chengdu hospital enters a plan?” | “A hospital name cannot solve a wait or price problem by itself.” | 2 shorts |
+| Short 6 | RISK-03 | “A safe process never asks for medical records in a DM.” | “Do not trade privacy for a faster answer in a DM.” | 2 shorts |
+
+其余 42 个基础主题保持 `draft_candidate（候选草稿）`。Day 23 只做成对比较，避免把主题差异误写成 Hook 效果。
+
+---
+
+## 6. Canada User Conversion Flow（加拿大用户转化流程）
+
+### 6.1 从内容到 Lead（线索）
+
+```text
+Content（教育/风险内容）
+  ↓
+Comment（公开问题；风险检查）
+  ↓
+DM（仅桥接；不收医疗资料）
+  ↓
+Landing Page（固定清单 CTA + 数据边界）
+  ↓
+Qualification（只用非临床字段）
+  ↓
+Human Review（人工复核）
+  ↓
+Next Action：checklist only / readiness call / provider referral / stop
+```
+
+| 阶段 | 自动/人工动作 | 允许记录 | Gate（闸门） | 停止条件 |
+| --- | --- | --- | --- | --- |
+| Content | 草稿经事实/专业/渠道人工审核后才可授权发布 | content_id、source_ids、市场、Hook、CTA、窗口 | `approved_for_authorized_test` | 无来源、医疗承诺、未授权发布 |
+| Comment | 风险路由优先；只回答公开非临床问题 | 聚合问题标签，不存用户原文到 Git | `safe_non_clinical` | 急症、诊断、病历、保证请求 |
+| DM | 发送固定边界 + 安全落地页；不展开病例 | consent state、匿名 interaction_id | `consent_to_continue` | 对方发敏感资料或拒绝边界 |
+| Landing Page | 领取清单、选择信息需求、申请人工沟通 | 国家、自选语言、旅行窗口、需求类别、同意 | `minimum_safe_fields` | 自由文本诱导健康披露、无隐私说明 |
+| Qualification | 人工检查市场、时间、成都开放度和边界接受 | anonymous_lead_id、资格标签、阻力、下一步 | `non_clinical_qualified` | 需要医学适格、急症、未成年人 |
+| Human Review | 决定清单/准备咨询/专业转介/停止 | review status、理由、风险计数 | `named_reviewer` | 无责任人、供给承诺需求 |
+| Next Action | 只进入获授权的下一步 | aggregate outcome | 用户/专业/供给权限 | 报价、医院名额、病例接收未解锁 |
+
+### 6.2 Landing Page 最小字段
+
+允许字段：
+
+- `country_of_residence`：只允许 Canada / other；
+- `preferred_language`：English / French / Chinese / other；
+- `china_familiarity`：travelled / lived / family-network / none / prefer-not-to-say；
+- `planning_window`：0–3 / 3–6 / 6–12 months / exploring only；
+- `information_need`：process / evidence / language / total-cost framework / aftercare / other-non-clinical；
+- `chengdu_openness`：open / unsure / not currently；
+- `contact_consent` 与 approved contact reference（真实联系方式不进入 Git）；
+- `acknowledgement`：不提交病历、诊断、证件或支付信息。
+
+禁止字段：诊断、症状、病史、用药、检查、影像、医生姓名、证件、生日、详细地址、银行卡、保险号和任何自由病情描述。
+
+### 6.3 英文话术｜仅为授权后人工使用的草稿
+
+#### 第一次评论回复
+
+> Thanks for the question. We can share general, non-clinical information about how to evaluate a possible care-related trip to Chengdu, including roles, evidence, language, travel planning, and follow-up questions. We can’t assess medical suitability or recommend treatment here. Please don’t post medical records or personal health details. The readiness checklist is here: [approved link].
+
+#### 第一次私信
+
+> Thanks for reaching out. Before we continue: this is a non-clinical planning conversation, not medical advice or a hospital referral. Please do not send diagnoses, test results, images, prescriptions, ID documents, or payment information in this chat. If you only want the 10-point Chengdu care-travel readiness checklist, you can use this approved page: [approved link]. If you request a human planning call, we’ll first confirm the information boundary and consent.
+
+#### 用户问价格
+
+> We don’t have a verified total price to quote. A responsible estimate would need a provider-confirmed scope and validity date, plus separate medical-provider, travel, and coordination costs. We won’t publish a savings claim or fixed package price without that evidence. I can share the cost-verification checklist so you can see what a real comparison would require.
+
+#### 用户问医院
+
+> We can’t recommend or guarantee a Chengdu hospital at this stage. Public information about an international service is only a lead—it is not proof of a provider agreement, availability, pricing, language support, or suitability for an individual. Those items would need written provider confirmation and professional review before any formal pathway.
+
+#### 用户问安全
+
+> We can’t guarantee that medical travel—or Chengdu—is safe or suitable for an individual. A responsible decision would require a qualified provider’s assessment, verified emergency and transfer arrangements, aftercare planning, travel advice, and clear responsibility boundaries. If this is urgent, please use local emergency or qualified medical services in Canada rather than social media.
+
+#### 用户问“为什么成都”
+
+> Chengdu is being researched as a candidate destination, not presented as a proven or superior option. The current reasons to keep researching are public international-service leads, the possibility of non-clinical language and journey coordination, and the city’s travel experience. None of those proves medical quality, availability, or fit. Our first step is to learn what evidence a Canadian resident would need before Chengdu even enters their consideration set.
+
+#### 用户说“我再考虑一下”
+
+> Absolutely. There’s no need to make a decision now. The checklist is designed to help you identify the evidence, costs, responsibilities, and follow-up questions you would need before considering any medical trip. We won’t follow up unless you explicitly choose to hear from us.
+
+#### 高意向用户
+
+> Based on what you’ve shared—without any medical details—you appear interested in a non-clinical planning conversation about the evidence and logistics required to evaluate Chengdu. The next step would be a human-reviewed readiness call. It will not assess diagnosis, treatment, medical suitability, or guarantee a provider or price. Please confirm that boundary and your consent before we send the approved booking link.
+
+#### 低意向用户
+
+> It sounds like you’re still exploring. The best next step is the general checklist rather than a call. You can review it without sharing personal or medical information, and you can opt in later if you want a non-clinical planning conversation.
+
+### 6.4 线索判定
+
+| 状态 | 必须同时满足 | 不代表 |
+| --- | --- | --- |
+| Lead | 主动提交、居住加拿大、同意边界、没有敏感内容 | 真实需求或支付 |
+| Qualified Lead | Canada + 3–12 月现实窗口/明确探索计划 + 对成都 open/unsure + 接受非临床边界 + 有具体信息需求 | 医学适格、医院接受、价格接受 |
+| High-intent Lead | Qualified + 主动要求人工准备咨询 + 能说出至少一个信任/流程前提 + 愿意在未来看书面供给证据 | 客户、订单、付款 |
+| Stop / Referral | 急症、临床判断、病历/证件/支付、未成年人、治疗/疗效/签证保证请求 | 不应继续营销；转合格主体或停止 |
+
+---
+
+## 7. 30-Day Canada Validation Experiment（加拿大 30 天验证实验）
+
+### 7.1 实验卡｜开始前必须预注册
+
+| 字段 | 锁定内容 |
+| --- | --- |
+| experiment_id | `EXP-CA-P0-01` |
+| market_candidate | `Canada`；仍非 Decision |
+| segment | `CS-01`：有中国旅行/生活/家庭网络经验、可安排非紧急旅行的加拿大居民 |
+| product_hypothesis | `PH-01`：成都国际就医准备咨询 |
+| primary_channel | `YouTube` |
+| secondary_channel | `Instagram`；只复用，不参与主因果判断 |
+| research_channel | `Google Search + Reddit`；只做公开/许可研究 |
+| conversion_channel | 固定 Landing Page + consent-based email/booking |
+| CTA | `Get the 10-point Chengdu care-travel readiness checklist` |
+| observation_window | 30 天；Day 1–5 准备，Day 6–27 观察，Day 28–30 复盘 |
+| Primary Variable（主要变量） | **Hook angle**：A = evidence/transparency；B = wait/cost trigger。其余固定 |
+| Supporting Variables（辅助变量） | 内容完成率、CTA 点击、信任/价格/旅行/随访阻力；只用于解释，不独立宣称因果 |
+| Forbidden Variables（禁止同时改变） | 国家、核心细分、产品假设、主渠道、CTA、落地页、价格、医院、发布频率、资格定义 |
+| expected_result | `observed / contradicted / insufficient_sample` |
+| owner | 用户指定的渠道责任人 + 人工复核人；Codex 只准备/汇总 |
+| external_gate | 未获得账号、渠道、素材、数据、预算与停止线授权前，保持 `draft_only` |
+
+### 7.2 Hook A / B 的唯一差异
+
+| 版本 | Hook angle | 示例 | 固定内容 |
+| --- | --- | --- | --- |
+| A | Evidence / Trust（证据/信任） | “What proof would you need before Chengdu enters your care-travel shortlist?” | 同一 PH-01、同一清单 CTA、同一 YouTube 格式和落地页 |
+| B | Wait / Cost Trigger（等待/成本触发） | “A long wait or high quote is not enough reason to book care abroad.” | 同上；不展示具体价格/节省比例/医院 |
+
+Day 6–13 运行 A；Day 15–22 运行 B；Day 23–27 复测表现较好的 Hook。Day 14 只做中期质量检查，不因早期播放量修改变量。
+
+### 7.3 Day 1–30 每日动作
+
+以下“发布/回复/收集”均以用户另行明确授权为前提；没有授权时，对应动作只做到 `draft / dry-run（草稿/模拟运行）`。
+
+| Day | 当日动作 | 内容数量 | 数据记录 | 反馈/复盘 |
+| ---: | --- | ---: | --- | --- |
+| 1 | 锁定 EXP-CA-P0-01、事实层级、权限和停止线 | 0 | 实验卡版本、owner、禁止变量 | 人工确认 Canada 仍是候选 |
+| 2 | 建立加拿大来源包与 freshness（新鲜度） | 0 | CA-01–10 来源、日期、范围 | 删除无来源主张 |
+| 3 | 锁定 CS-01、PH-01、清单 CTA 和 QL 定义 | 0 | segment/product/CTA schema | 反方检查“是否偷换为卖医疗” |
+| 4 | 完成 Landing Page 草稿和最小字段 | 0 | 表单字段、同意、隐私/风险文案 | 数据最小化审计 |
+| 5 | 完成 4 long + 12 short 草稿、事实/医疗/渠道复核 | 16 drafts | fact_refs、reviewer、status | 未获授权则停在这里 |
+| 6 | Hook A Long 1：JRN-01-A；Short 1：COST-02-A | 2 | CV、观看完成、CTR、CTA | 只检查安全/链接，不改实验 |
+| 7 | 研究 Google/Reddit 公开问题；处理获授权互动 | 0 | 主题、OB 标签、来源窗口 | 不存个人原文/账号 |
+| 8 | Hook A Short 2：WAIT-01-A；24h 后原样复用至 IG | 1 + 1 repost | 主/辅渠道分开记 | DM 只桥接至落地页 |
+| 9 | Hook A Short 3：CDT-03-A | 1 | CV、CTR、CTA、OB-provider | 看“证据”是否引发问题 |
+| 10 | Hook A Long 2：RISK-01-A；Short 4：EDU-04-A | 2 | 完整率、safe conversion | 检查敏感资料事件 |
+| 11 | Hook A Short 5：FAQ-02-A | 1 | 医院问题、CTA-after-boundary | 观察无医院保证后流失 |
+| 12 | Hook A Short 6：RISK-03-A | 1 | safe form / unsafe DM 比率 | 数据边界复盘 |
+| 13 | A 版本收尾；人工复核所有互动 | 0 | A 窗口汇总、QL/HI/风险 | 不以播放量选胜者 |
+| 14 | Weekly Review 1（周复盘 1） | 0 | observed/insufficient/risk | 只修事实/安全错误；不改变量 |
+| 15 | Hook B Long 1：JRN-01-B；Short 1：COST-02-B | 2 | 与 A 同口径 | 锁定 B 窗口 |
+| 16 | Hook B Short 2：WAIT-01-B；IG 原样复用 | 1 + 1 repost | CV、CTR、CTA、OB-wait | 不追加价格承诺 |
+| 17 | Google/Reddit 研究；人工处理合规问题 | 0 | 等待/成本/旅行原话摘要 | 不把帖子作者转成 Lead |
+| 18 | Hook B Short 3：CDT-03-B | 1 | 成都证据问题、CTA、OB-trust | 与 CDT-03-A 成对比较 |
+| 19 | Hook B Long 2：RISK-01-B；Short 4：EDU-04-B | 2 | 风险教育后的 CTA/QL | 与对应 A 版本成对比较 |
+| 20 | Hook B Short 5：FAQ-02-B | 1 | 医院问题、CTA-after-boundary | 与 FAQ-02-A 成对比较 |
+| 21 | Hook B Short 6：RISK-03-B | 1 | safe form / unsafe DM 比率 | 与 RISK-03-A 成对比较 |
+| 22 | B 版本收尾；人工复核所有互动 | 0 | B 窗口汇总、QL/HI/风险 | 不跨渠道比较因果 |
+| 23 | 按 8 个基础资产成对比较 A/B：CTR、CTA、QL、HI、风险 | 0 | paired analysis snapshot | 样本不足则不选 winner |
+| 24 | 用胜出 Hook 制作一个 held-out（留出）主题：WAIT-03；其余规则固定 | 1 | replication result | 检查 Hook 能否迁移到新主题 |
+| 25 | 对已明确同意的 HI 做人工非临床准备咨询 | 0 | 匿名需求/阻力/next action | 不问病情；需要临床则停止 |
+| 26 | 用胜出 Hook 制作第二个 held-out 主题：FAQ-01；其余规则固定 | 1 | replication result | 继续锁定 CTA/页面 |
+| 27 | 关闭 30 天观察窗口 | 0 | denominator、funnel、OB、risk | 后续数据不回填本窗口 |
+| 28 | 完成数据质量和漏斗审计 | 0 | missing/duplicate/attribution | 未收集不写成 0 |
+| 29 | 生成 Decision Candidate（决策候选）包 | 0 | evidence/counterevidence/unknowns | Codex 不作 Go/No-Go |
+| 30 | 用户 + ChatGPT + 必要专业方复审 | 0 | continue / hold / stop / escalate | 只有正式记录才能改变状态 |
+
+### 7.4 30 天内容总量
+
+- 4 条 YouTube long-form；
+- 12 条 YouTube Shorts；
+- Day 24/26 另有 2 条 held-out（留出主题）复测内容，不计入 A/B 主比较；30 天最多 18 条 YouTube 内容；
+- 选定 Shorts 在 Instagram 原样复用，最多 12 条，不独立改 Hook/CTA；
+- 2 次周复盘 + 1 次数据审计 + 1 份 30 天证据包；
+- 人工准备咨询数量不预先强求；只对明确同意且通过安全资格的 HI 进行。
+
+### 7.5 Day 31–60 条件扩展
+
+只有 Day 30 结果为 `continue` 或有明确补样本方案的 `hold` 才进入：
+
+| 窗口 | 唯一目标 | 允许动作 | 完成证据 | 禁止 |
+| --- | --- | --- | --- | --- |
+| Day 31–45 | 验证 CS-01 的阻力/价值是否在人工沟通中重复 | 5–8 次获同意的非临床访谈；匿名主题卡 | 至少 3 次重复相同价值/阻力；0 未受控风险 | 不收病历、不问诊断、不报价 |
+| Day 46–60 | 只改变一个下一变量：`product_hypothesis PH-01 → PH-04` 的价值理解 | 在相同市场/细分/主渠道下测试 concierge 边界内容 | 用户能否理解并愿意讨论协调范围 | 无 Supply Gate 时不提供/销售 PH-04 |
+
+如果 Day 31–45 仍是样本不足，不进入 PH-04；继续补同一实验的可解释样本，或停止该渠道。
+
+---
+
+## 8. Data Metrics System（数据指标体系）
+
+### 8.1 漏斗指标定义
+
+| 指标 | 定义 | 不能计入 |
+| --- | --- | --- |
+| Exposure / CV | 平台聚合显示来自加拿大的相关内容观看 | 无国家归因、重复机器人、非目标泛流量 |
+| Engagement | 评论、收藏、分享、有效观看完成 | 单纯点赞不能证明意图 |
+| Profile Visit | 从实验内容进入账号主页 | 无法归因到实验的泛访问 |
+| LPV | 从指定实验链接进入固定 Landing Page 的独立访问 | 内部测试、机器人、其他市场流量 |
+| CTA Submission | 同意边界后领取清单或申请人工准备咨询 | 未同意、含敏感资料、重复提交 |
+| Lead | Canada + 同意 + 安全字段完整 | 点赞、评论、未授权名单 |
+| Qualified Lead | 符合 6.4 定义，经人工确认 | 需要医疗判断、只问价格、只旅游 |
+| High-intent Lead | QL + 主动申请人工准备咨询 + 明确成都开放度/证据前提 | 口头“感兴趣”、索取免费资料 |
+| Price Sensitivity | “总成本/自付/保险/预算”作为主要阻力的匿名标签 | 不能保存具体财务或支付资料 |
+| Trust Barrier | provider / safety / language / aftercare / data / China / Chengdu 等标签 | 不推断个人心理或族裔偏好 |
+| Maximum Objection | 每个 QL 只选一个最阻断下一步的主标签 | 不把所有反对平均稀释 |
+
+### 8.2 核心比率
+
+```text
+Content-to-LP CTR = LPV / Canada-attributed relevant views
+CTA rate = valid CTA submissions / LPV
+Qualification rate = QL / valid CTA submissions
+High-intent rate = HI / QL
+Trust-retention rate = 完整看到“无医院/价格/疗效保证”后仍提交的 QL / 看到边界的人
+Unsafe-intake rate = 触发敏感/临床路由的互动 / 全部可归因互动
+```
+
+只有同一窗口、同一 Hook、同一主渠道、同一 CTA 和同一资格定义的数据可直接比较。
+
+### 8.3 Minimum Interpretable Sample（最低可解释样本）
+
+满足任一数据路径，才允许判断需求；否则一律 `insufficient_sample`：
+
+- **Funnel path（漏斗路径）：** 至少 150 个 Canada-attributed LPV；或
+- **Conversation path（对话路径）：** 至少 20 个合规、主动、加拿大居住的 CTA submission，且完成安全人工复核。
+
+门槛是 `Hypothesis`，开始前由用户和 ChatGPT 定稿；不得看到结果后修改分母。
+
+### 8.4 Continue / Hold / Stop 规则
+
+#### Continue（继续建议，仍非正式市场 Decision）
+
+必须同时满足：
+
+1. 达到最低可解释样本；
+2. 至少 5 个 QL，其中至少 2 个 HI；
+3. 至少 3 个独立 QL 重复同一个非临床价值/阻力；
+4. 用户在看到“无医院/价格/疗效保证”后仍愿意进入下一步；
+5. 无未受控敏感数据、医疗承诺或渠道违规事件；
+6. 下一步能明确要补的 Supply Gate 证据，而不是要求项目方先承诺。
+
+Continue 只解锁“请求用户判断是否进入受监督供给验证”，不解锁销售、报价或患者资料。
+
+#### Hold（暂停/补证）
+
+任一情况：
+
+- 未达到最低样本；
+- 1–4 个 QL 或只有 1 个 HI；
+- 需求存在但最大阻力在供给、价格、旅行或随访，公开研究无法解决；
+- A/B 差异方向不稳定或复测不成立；
+- 渠道能触达，但加拿大/成都归因不足。
+
+Hold 后只补一个短板：样本、供给证据、Landing Page、资格定义或渠道归因，不能同时换细分/产品/渠道。
+
+#### Stop（停止当前路线）
+
+任一情况：
+
+- 达到最低样本后 QL = 0；
+- 绝大多数有效互动只有在低价、疗效、医院/排期保证出现时才继续；
+- 用户普遍接受跨境医疗，但明确拒绝成都且原因无法由可验证信息解决；
+- PH-01 被认为没有独立价值，用户只需要临床服务而非准备/协调；
+- 发现无法安全、合规地获得信号，或渠道政策/专业复核不允许该测试；
+- Supply Gate 关键书面证据不可获得，无法诚实进入下一阶段。
+
+#### Immediate Safety Stop（立即安全停止）
+
+- 未授权发布/私信/投放；
+- 项目方或自动话术作诊断、治疗、疗效、医院、价格、签证保证；
+- 病历、诊断、身份、支付等敏感原文进入 Git/普通 CRM；
+- 急症/未成年人未及时停止和升级；
+- 账号、群规、广告或数据政策被绕过。
+
+### 8.5 什么才证明“真实客户”
+
+本报告的 QL/HI 只能证明需求信号。真实客户证据要继续经过：
+
+```text
+High-intent Lead
+  ↓
+专业/隐私/旅行/支付边界通过
+  ↓
+机构书面接受范围 + 价格 + 语言 + 异常/随访 SLA
+  ↓
+Formal Quote（正式报价）
+  ↓
+Valid Payment / Deposit（真实有效支付/订金）
+  ↓
+Arrival（实际到达成都）
+```
+
+每一层均需独立证据。30 天内容实验不能提前宣称完成后四层。
+
+---
+
+## 9. 接入 Strategy-Agnostic Medical Tourism Operating System（现有战略无关系统）
+
+### 9.1 当前可直接承接的对象
+
+| 本报告对象 | 现有系统承接点 | 写入内容 | 边界 |
+| --- | --- | --- | --- |
+| 加拿大公开研究 | Research Intake → Raw/Staging/Adjudicated | source、date、scope、classification、confidence | Research 不能直入 Canonical |
+| 公开问题/阻力 | `DemandRadar` | theme、market=Canada、source、confidence、匿名摘要 | 不存个人原文/身份/健康详情 |
+| PH-01–11 | `ProductCatalog` | code、target_segment、value_hypothesis、requirements、risks | 全部保持 `hypothesis`，不生成报价 |
+| 50 条内容 | `ContentBrief` / `ContentFactory` | audience、objective、fact_refs、risk_refs、format、CTA | 只到 draft/review；adapter 关闭 |
+| 评论/DM | `RiskRouter` → anonymous lead | 风险枚举、安全最小字段、consent state | Risk 优先；高风险不写原文 |
+| QL/HI | `LeadScorer` / `ProductMatcher` | 配置化运营优先级、candidate match | 不是医学适格/产品推荐 |
+| EXP-CA-P0-01 | `LearningLoopService` | primary_variable、fixed_variables、window、metrics | 结果只可 observed/contradicted/insufficient |
+| Day 30 | Weekly Review → Decision Candidate | evidence、counterevidence、unknowns、risks | `business_validation_completed=false`；用户决定 |
+
+### 9.2 目标数据流
+
+```text
+Market Candidate DB（市场候选库：Canada）
+  ↓
+Demand Radar（公开问题 + 授权匿名反馈）
+  ↓
+Product DB（PH-01–11，全部 hypothesis）
+  ↓
+Content Factory（50 candidates → 16 approved experiment drafts）
+  ↓
+Lead System（安全最小字段 + human review）
+  ↓
+Experiment Engine（EXP-CA-P0-01）
+  ↓
+Weekly Review / Decision Candidate
+  ↓
+用户 + ChatGPT + 必要专业主体
+```
+
+### 9.3 当前缺口与 Future Improvement（未来改进，不在本轮修改）
+
+| 能力 | 当前状态 | 缺什么 | Future Improvement |
+| --- | --- | --- | --- |
+| Market Candidate DB | **缺失** | 市场/细分/来源/状态/重判触发器的数据对象 | 新增带 provenance 的 `MarketCandidate` 与快照；不能自动晋升 |
+| Market Ranking | **缺失** | 维度、权重、证据完整度与历史分数 | 新增 immutable score snapshot（不可变评分快照）和人工复审 |
+| Channel Fit | **缺失** | market × segment × product × channel 的证据与成本 | 新增 `ChannelFitSnapshot`，区分研究/发布/转化角色 |
+| Content Evaluation | **部分具备** | 已有 brief/draft/metrics，但缺 Hook 版本、加拿大归因、CTA/QL 关联 | 新增 content_experiment_id、variant、attribution_window、fact version lock |
+| Lead Feedback | **部分具备** | 已有匿名 lead/score/match，但缺最大阻力、边界接受、QL→HI→下一步反馈 | 新增安全枚举字段和 aggregate feedback；继续拒绝自由健康文本 |
+
+本报告不改代码、不建数据库、不启用 adapter。只有用户以后锁定 Implementation Design（实现设计）后，Future Improvement 才可进入工程计划。
+
+---
+
+## 10. Source Matrix（来源与事实分层）
+
+| ID | 来源 | 用途 | 分类 / 范围 |
+| --- | --- | --- | --- |
+| F-01 | `project_facts/`、`logs/latest.md`、`logs/current_target.md` | 当前战略、权限、已确认缺失 | `Confirmed project fact`；GitHub main 回读 2026-08-20 |
+| F-02 | `research_baselines/《成都国际医疗旅游项目｜第一轮市场选择评分报告_v1.md》` | Canada 作为第一个研究候选的上游依据 | `Research / Recommendation`；不是 Decision |
+| F-03 | `docs/plans/`、`medical_tourism_os/`、tests | Demand/Product/Content/Lead/Experiment 实现能力 | `Confirmed engineering fact`；现实 adapter 关闭 |
+| CA-01 | [CIHI — Wait times in Canada, 2026](https://www.cihi.ca/en/wait-times-in-canada-2026) | 加拿大等待压力与数据口径 | `Fact candidate`；只支持需求线索，不支持赴蓉意愿 |
+| CA-02 | [Statistics Canada — Cost-related avoidance of oral health services](https://www150.statcan.gc.ca/n1/daily-quotidien/250212/dq250212a-eng.htm)；[Canadian Oral Health Survey](https://www150.statcan.gc.ca/n1/pub/82-570-x/2024001/section2-eng.htm) | 牙科成本/保险缺口细分 | `Fact candidate`；不支持成都价格/质量/适格 |
+| CA-03 | [Statistics Canada — 2021 immigration profile](https://www12.statcan.gc.ca/census-recensement/2021/as-sa/fogs-spg/page.cfm?dguid=2021A000011124&lang=E&topic=9)；[Portrait of Chinese populations, 2026](https://www150.statcan.gc.ca/n1/pub/89-657-x/89-657-x2026001-eng.htm) | 华人/亚洲移民群体规模与多样性 | `Fact candidate`；不得从族裔推断需求、信任、支付 |
+| CA-04 | [CIRA — Canadian Internet Trends 2025](https://www.cira.ca/en/resources/documents/state-of-internet/canadian-internet-trends-2025/)；[Environics — 2025 Social Media Trends](https://environics.ca/insights/articles/2025-social-media-trends-in-canada/) | 渠道覆盖与年龄差异线索 | `Research`；平台覆盖不等于本项目低 CAC |
+| CA-05 | [Government of Canada — Travel advice for China](https://travel.gc.ca/destinations/china)；[中国驻加拿大使馆 — 2026 免签通知](https://ca.china-embassy.gov.cn/eng/zytz_0/202602/t20260216_11860601.htm) | 当前旅行/签证摩擦线索 | `Fact candidate`；动态政策，按护照/目的/日期逐案复核 |
+| CA-06 | [Google Ads — Health in personalised advertising](https://support.google.com/adspolicy/answer/16701855?hl=en-GB)；[Healthcare and medicines policy](https://support.google.com/adspolicy/answer/176031?hl=en) | 渠道/健康定向限制 | `Policy research`；平台和专业复核 required |
+| CA-07 | [Office of the Privacy Commissioner of Canada — PIPEDA self-assessment](https://www.priv.gc.ca/media/1196/pipeda_sa_tool_200807_e.pdf) | 同意、最小收集、敏感健康资料边界 | `Policy research`；不是法律意见，professional review required |
+| CA-08 | [Health Canada — Health product advertising incidents](https://www.canada.ca/en/health-canada/services/drugs-health-products/regulatory-requirements-advertising/health-product-advertising-incidents.html) | 防止虚假、误导或未经证实的医疗营销 | `Policy research`；不构成对本项目的合规结论 |
+| CA-09 | [Canada Dental Care Plan coverage](https://www.canada.ca/en/services/benefits/dental/dental-care-plan/coverage.html) | 覆盖、共付和额外费用复杂性 | `Fact candidate`；不推断境外报销或跨境支付 |
+| CA-10 | [CIHI — Health Expenditure Data in Brief 2025](https://www.cihi.ca/sites/default/files/document/health-expenditure-data-in-brief-2025-en.pdf) | 支付/自付宏观背景 | `Research proxy`；不等于个人服务费意愿 |
+| CD-01 | [West China Hospital — About Us / International Medical Center](https://www.wchscu.cn/About_Us.html) | 成都公开国际服务线索 | `Fact candidate`；不是合作、SLA、价格或可售服务 |
+
+### 来源使用规则
+
+- `Confirmed fact` 只描述当前项目/工程已回读状态；
+- `Fact candidate` 是有来源的候选事实，尚未经过项目裁决；
+- `Inference` 是本报告对细分/渠道/顺序的推断；
+- `Hypothesis` 是产品、阈值、Hook 和 30–60 天实验；
+- `Recommendation` 是“若未来获准，优先这样验证”的建议；
+- `Unknown` 不得用营销文案、历史报告或单个咨询填补。
+
+---
+
+## 11. Required Output Inventory（必须交付清单）与完成态
+
+### 11.1 本报告覆盖
+
+| 用户要回答的问题 | 本报告位置 |
+| --- | --- |
+| 加拿大打谁 | 第 2 节：10 个细分 + Top 3 |
+| 卖什么候选产品 | 第 3 节：11 个假设 + P0/P1/P2 |
+| 在哪里找人 | 第 4 节：13 渠道 + Channel Stack |
+| 发什么内容 | 第 5 节：50 主题 + 首轮 16 条 |
+| 怎么聊天 | 第 6 节：流程、最小字段、8 组英文话术 |
+| 怎么判断真假需求 | 第 6.4、8 节：Lead/QL/HI、漏斗与反证 |
+| 30 天以后继续还是停止 | 第 7–8 节：每日动作、最低样本、Continue/Hold/Stop |
+| 如何进入系统 | 第 9 节：现有承接点与 Future Improvement |
+
+### 11.2 完成态
+
+| 完成层 | 状态 | 说明 |
+| --- | --- | --- |
+| technical_validation（技术验证） | `passed` | 10/11/13/50/30 清单计数、Markdown/来源/敏感模式检查及 74 项项目回归测试已通过 |
+| content_validation（内容验证） | 待人工阅读 | 报告结构完成不等于用户接受细分/产品/渠道/阈值 |
+| human_review（人工复审） | `required` | 用户与 ChatGPT 需决定是否把 EXP-CA-P0-01 升为正式执行候选 |
+| professional_review（专业复核） | `required` | 加拿大医疗广告/隐私、跨境数据、旅行、支付、合同、成都供给 |
+| business_observation（真实业务观察） | `not_started` | 当前无发布、流量、Lead、客户、付款、到达或交付 |
+| sync_status（同步状态） | 待 GitHub/Google Drive 回读 | 文件存在、commit 或上传均不代表业务验证 |
+
+---
+
+## 12. 最终作战卡｜一页执行摘要
+
+```text
+现在做什么：
+  准备 EXP-CA-P0-01，不对外执行。
+
+若用户未来授权：
+  Canada / CS-01 / PH-01 / YouTube / fixed checklist CTA
+  30 天只比较 Hook A（证据/信任）与 Hook B（等待/成本触发）。
+
+发什么：
+  4 条长视频 + 12 条 Shorts，Instagram 只原样复用。
+
+去哪里研究：
+  Google Search + Reddit 公开、合规、无个人名单。
+
+怎么转化：
+  内容 → 评论风险路由 → DM 边界 → 固定 Landing Page
+  → 安全资格 → 人工复核 → 清单/准备咨询/停止。
+
+什么是成功：
+  达最低样本；≥5 QL；≥2 HI；≥3 个重复价值/阻力；0 未受控风险。
+
+什么情况下 Hold：
+  样本不足、1–4 QL、信号矛盾、供给/旅行/随访证据缺口占主导。
+
+什么情况下 Stop：
+  可解释样本下 QL=0；只有靠低价/疗效/医院保证才有反应；
+  成都被明确拒绝；或无法安全合规地获得信号。
+
+不做什么：
+  不锁加拿大，不卖医疗，不报价，不保证医院/疗效/签证，
+  不收病历/证件/支付信息，不让 Codex 自动 Go/No-Go。
+```
+
+**最终边界：** 本报告回答“如果未来选择加拿大，明天获授权后如何开始验证”；它没有把 Canada、CS-01、PH-01、YouTube 或任何阈值写成正式项目 Decision。只有用户与 ChatGPT 在正式决策记录中锁定，并完成相应外部与专业授权后，才可从 `draft_only` 进入真实实验。
