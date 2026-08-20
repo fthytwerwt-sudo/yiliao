@@ -774,7 +774,7 @@ Weekly Review / Decision Candidate
 | human_review（人工复审） | `required` | 用户与 ChatGPT 需决定是否把 EXP-CA-P0-01 升为正式执行候选 |
 | professional_review（专业复核） | `required` | 加拿大医疗广告/隐私、跨境数据、旅行、支付、合同、成都供给 |
 | business_observation（真实业务观察） | `not_started` | 当前无发布、流量、Lead、客户、付款、到达或交付 |
-| sync_status（同步状态） | 待 GitHub/Google Drive 回读 | 文件存在、commit 或上传均不代表业务验证 |
+| sync_status（同步状态） | `confirmed` | GitHub `main` 已 push/远端回读；同一 Markdown 已上传 Google Drive“医疗”文件夹并回读确认；均不代表业务验证 |
 
 ---
 
