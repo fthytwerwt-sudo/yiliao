@@ -14,11 +14,12 @@ CLI、Local API 和 workflow 将对象转换为可审查的本地输出。
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from types import MappingProxyType
 from typing import Any, Dict, Mapping
+
+from general_ai_business_os.domain.immutability import freeze_mapping, to_mutable_json
 
 
 def utc_now_isoformat() -> str:
@@ -71,14 +72,65 @@ class OperationResult:
     data: Dict[str, Any]
 
 
+_ALLOWED_AUDIT_ACTIONS = frozenset(
+    {
+        "adapter.request",
+        "config.import",
+        "config.review",
+        "storage.record",
+        "system.initialize",
+    }
+)
+_ALLOWED_AUDIT_OUTCOMES = frozenset({"blocked", "completed", "initialized", "mock", "rejected"})
+_ALLOWED_AUDIT_DETAIL_CODES = {
+    "adapter": frozenset({"content", "crm", "knowledge", "messaging", "search", "storage"}),
+    "operation": frozenset(
+        {"analyze", "create", "generate", "import", "initialize", "read", "retrieve", "review", "score", "update", "write"}
+    ),
+    "reason": frozenset(
+        {"action_required", "external_actions_disabled", "mock_dry_run", "permission_denied", "validation_rejected"}
+    ),
+    "status": frozenset({"BLOCKED", "DISABLED", "IMPLEMENTED", "MOCK"}),
+}
+
+
+def _require_audit_code(value: Any, *, field_name: str, allowed_values: frozenset[str]) -> str:
+    """验证字段级闭集代码，避免无空格的敏感值伪装成任意系统字符串。"""
+
+    if not isinstance(value, str) or value not in allowed_values:
+        raise ValueError(f"audit_{field_name}_invalid")
+    return value
+
+
+def _validate_audit_details(details: Mapping[str, Any]) -> Dict[str, Any]:
+    """验证最小审计详情；未知/嵌套/自由文本在构造 AuditEvent 前拒绝。"""
+
+    safe_details: Dict[str, Any] = {}
+    for key, value in details.items():
+        if key == "count":
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError("audit_details_count_invalid")
+            safe_details[key] = value
+            continue
+        allowed_values = _ALLOWED_AUDIT_DETAIL_CODES.get(key)
+        if allowed_values is None:
+            raise ValueError("audit_details_field_not_allowed")
+        safe_details[key] = _require_audit_code(
+            value,
+            field_name=f"details_{key}",
+            allowed_values=allowed_values,
+        )
+    return safe_details
+
+
 @dataclass(frozen=True)
 class AuditEvent:
     """
     已经过安全字段清洗且传递性不可变的审计事件。
 
     关键边界：
-    `frozen=True` 只能阻止属性重新赋值，不能阻止普通 `dict` 被原地改写。这里把详情复制为
-    `MappingProxyType`，使 AuditLogger 返回后仍不能被调用者植入敏感内容再传给通用 Storage。
+    `frozen=True` 只能阻止属性重新赋值，不能阻止嵌套容器被原地改写。这里同时验证字段级闭集，
+    并使用统一递归冻结合同，使公开构造、AuditLogger 返回和后续 Storage 都共享同一安全边界。
     """
 
     action: str
@@ -87,9 +139,27 @@ class AuditEvent:
     recorded_at: str
 
     def __post_init__(self) -> None:
-        """复制并冻结详情映射，切断调用者原始 dict 与安全事件之间的可变引用。"""
+        """在公开构造入口验证审计合同并深层冻结详情，避免绕过 Logger。"""
 
-        object.__setattr__(self, "details", MappingProxyType(dict(self.details)))
+        object.__setattr__(
+            self,
+            "action",
+            _require_audit_code(
+                self.action,
+                field_name="action",
+                allowed_values=_ALLOWED_AUDIT_ACTIONS,
+            ),
+        )
+        object.__setattr__(
+            self,
+            "outcome",
+            _require_audit_code(
+                self.outcome,
+                field_name="outcome",
+                allowed_values=_ALLOWED_AUDIT_OUTCOMES,
+            ),
+        )
+        object.__setattr__(self, "details", freeze_mapping(_validate_audit_details(self.details)))
 
     def to_dict(self) -> Dict[str, Any]:
         """导出新的普通字典供 JSON/Storage 使用，不暴露事件内部的可变引用。"""
@@ -97,7 +167,7 @@ class AuditEvent:
         return {
             "action": self.action,
             "outcome": self.outcome,
-            "details": dict(self.details),
+            "details": to_mutable_json(self.details),
             "recorded_at": self.recorded_at,
         }
 
@@ -120,9 +190,14 @@ class StoredRecord:
 
     id: str
     kind: str
-    payload: Dict[str, Any]
+    payload: Mapping[str, Any]
     created_at: str
     updated_at: str
+
+    def __post_init__(self) -> None:
+        """深层冻结 payload，防止输入/导出容器别名在创建后污染持久化记录。"""
+
+        object.__setattr__(self, "payload", freeze_mapping(self.payload))
 
     @classmethod
     def new(cls, *, record_id: str, kind: str, payload: Dict[str, Any]) -> "StoredRecord":
@@ -136,7 +211,7 @@ class StoredRecord:
         return cls(
             id=record_id,
             kind=kind,
-            payload=dict(payload),
+            payload=payload,
             created_at=timestamp,
             updated_at=timestamp,
         )
@@ -144,7 +219,13 @@ class StoredRecord:
     def to_dict(self) -> Dict[str, Any]:
         """将记录安全转换成 Storage Port 需要的结构化字典。"""
 
-        return asdict(self)
+        return {
+            "id": self.id,
+            "kind": self.kind,
+            "payload": to_mutable_json(self.payload),
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
 
     @classmethod
     def from_dict(cls, payload: Dict[str, Any]) -> "StoredRecord":
@@ -153,7 +234,7 @@ class StoredRecord:
         return cls(
             id=str(payload["id"]),
             kind=str(payload["kind"]),
-            payload=dict(payload["payload"]),
+            payload=payload["payload"],
             created_at=str(payload["created_at"]),
             updated_at=str(payload["updated_at"]),
         )

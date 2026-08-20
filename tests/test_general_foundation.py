@@ -168,7 +168,66 @@ class GeneralFoundationTests(unittest.TestCase):
             persisted = store.get_record("TEST_AUDIT_EVENT")
 
         self.assertIsNotNone(persisted)
-        persisted_text = json.dumps(persisted.payload, ensure_ascii=False, sort_keys=True)
+        persisted_text = json.dumps(persisted.to_dict(), ensure_ascii=False, sort_keys=True)
+        for unsafe_value in unsafe_values:
+            self.assertNotIn(unsafe_value, persisted_text)
+
+    def test_audit_and_storage_records_deep_freeze_inputs_and_exports(self) -> None:
+        """领域记录必须跨构造、导出、嵌套值和 SQLite 回读保持不可变安全快照。"""
+
+        from general_ai_business_os.domain.entities import AuditEvent, StoredRecord
+        from general_ai_business_os.storage.sqlite_store import SqliteStore
+
+        unsafe_values = ("PATIENT_NOTE", "TEST_PERSON", "ghp_ABC123SECRET", "TEST_HEALTH_DETAIL")
+        with self.assertRaisesRegex(ValueError, "audit_details_reason_invalid"):
+            AuditEvent(
+                action="adapter.request",
+                outcome="blocked",
+                details={"reason": {"nested": "PATIENT_NOTE"}},
+                recorded_at="2026-08-20T00:00:00+00:00",
+            )
+
+        audit_event = AuditEvent(
+            action="adapter.request",
+            outcome="blocked",
+            details={"adapter": "content", "operation": "generate", "reason": "external_actions_disabled"},
+            recorded_at="2026-08-20T00:00:00+00:00",
+        )
+        exported_event = audit_event.to_dict()
+        record = StoredRecord.new(
+            record_id="TEST_SAFE_AUDIT",
+            kind="audit_event",
+            payload=exported_event,
+        )
+        exported_event["details"]["reason"] = "ghp_ABC123SECRET"
+        self.assertEqual("external_actions_disabled", record.payload["details"]["reason"])
+
+        nested_source = {"nested": {"items": ["TEST_SAFE_ITEM"]}}
+        nested_record = StoredRecord.new(
+            record_id="TEST_NESTED_RECORD",
+            kind="test_kind",
+            payload=nested_source,
+        )
+        nested_source["nested"]["items"].append("TEST_HEALTH_DETAIL")
+        self.assertEqual(("TEST_SAFE_ITEM",), nested_record.payload["nested"]["items"])
+        with self.assertRaises(TypeError):
+            nested_record.payload["nested"] = "PATIENT_NOTE"
+        with self.assertRaises(TypeError):
+            nested_record.payload["nested"]["items"] = "TEST_PERSON"
+
+        exported_record = nested_record.to_dict()
+        exported_record["payload"]["nested"]["items"].append("ghp_ABC123SECRET")
+        self.assertEqual(("TEST_SAFE_ITEM",), nested_record.payload["nested"]["items"])
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = SqliteStore(Path(directory) / "state.sqlite3")
+            store.migrate()
+            store.save_record(record)
+            store.save_record(nested_record)
+            recovered = store.get_record("TEST_NESTED_RECORD")
+
+        self.assertIsNotNone(recovered)
+        persisted_text = json.dumps(recovered.to_dict(), ensure_ascii=False, sort_keys=True)
         for unsafe_value in unsafe_values:
             self.assertNotIn(unsafe_value, persisted_text)
 

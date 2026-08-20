@@ -57,6 +57,9 @@ class SqliteStore(StoragePort):
         """显式 upsert 通用记录；调用者负责决定何时应更新已有 ID。"""
 
         self.migrate()
+        # Storage 只序列化领域对象提供的新快照。这样即使调用方随后修改 `to_dict()` 的返回值，
+        # 也不会反向改变已经冻结的 record.payload 或下一次写入内容。
+        serialized = record.to_dict()
         with self._connect() as connection:
             connection.execute(
                 """
@@ -70,7 +73,7 @@ class SqliteStore(StoragePort):
                 (
                     record.id,
                     record.kind,
-                    json.dumps(record.payload, ensure_ascii=False, sort_keys=True),
+                    json.dumps(serialized["payload"], ensure_ascii=False, sort_keys=True),
                     record.created_at,
                     record.updated_at,
                 ),
