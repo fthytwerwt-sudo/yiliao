@@ -20,3 +20,12 @@ class InMemoryStore(MemoryStore):
     def __init__(self) -> None: self._items = {}
     def put(self, key, value): self._items[key] = dict(value)
     def get(self, key): return dict(self._items[key]) if key in self._items else None
+
+class LocalMemoryAdapter(InMemoryStore):
+    """本地短期/任务/运行状态 Memory，不连接外部服务。"""
+
+class VectorMemoryAdapter(InMemoryStore):
+    """Vector Memory 适配接口的本地 Mock；未来可连接 Qdrant/Chroma。"""
+
+class DatabaseMemoryAdapter(InMemoryStore):
+    """Database Memory 适配接口的本地 Mock；未来可连接 pgvector。"""

@@ -9,6 +9,7 @@ from general_ai_business_os.tool_registry import MockTool, ToolRegistry
 from general_ai_business_os.workflow_engine import WorkflowEngine
 from general_ai_business_os.config import SystemConfig
 from general_ai_business_os.permissions.policy import PermissionPolicy
+from general_ai_business_os.evaluation import EvaluationService
 
 @dataclass(frozen=True)
 class SyntheticE2EResult:
@@ -22,4 +23,5 @@ def run_test_business() -> SyntheticE2EResult:
     policy = PermissionPolicy(SystemConfig(external_actions_allowed=True)); tools = ToolRegistry(config, policy); memory = InMemoryStore(); agents = AgentRegistry(config, ModelGateway(config, {"OPENAI": MockLlmProvider()}, policy), tools, memory)
     result = WorkflowEngine(agents).run({"nodes":["TEST_AGENT"],"edges":[],"retry":0}, {"input":"TEST_INPUT"})
     if result.status != "COMPLETED" or agents.state("TEST_AGENT") is None: raise AssertionError("synthetic_runtime_incomplete")
+    EvaluationService().evaluate(accuracy=0, latency=0, cost=0, tool_success_rate=1, human_override_rate=0)
     return SyntheticE2EResult(("Config","Agent","Tool","Workflow","Memory","Evaluation","Feedback"), 0, False)

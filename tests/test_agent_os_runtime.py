@@ -43,9 +43,9 @@ class AgentOsRuntimeTests(unittest.TestCase):
         from general_ai_business_os.plugins import PluginRegistry
 
         registry = PluginRegistry()
-        registry.register("TEST_PLUGIN", {"plugin_version": "TEST_V1", "core_api": "V1"})
+        registry.register("TEST_PLUGIN", {"plugin_id": "TEST_PLUGIN", "version": "TEST_V1", "permissions": [], "dependencies": [], "entrypoint": "TEST_ENTRY"})
 
-        self.assertEqual("TEST_V1", registry.get("TEST_PLUGIN")["plugin_version"])
+        self.assertEqual("TEST_V1", registry.get("TEST_PLUGIN")["version"])
 
 
 if __name__ == "__main__":
