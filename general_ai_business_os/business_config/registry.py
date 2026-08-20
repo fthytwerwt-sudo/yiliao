@@ -69,7 +69,8 @@ class BusinessConfigRegistry:
         current = self.get(package.manifest.business_id, package.manifest.config_version)
         if current.manifest.review_status != ConfigReviewStatus.PENDING:
             raise ConfigNotConfirmedError("config_review_not_pending")
-        event_id = self._event_id(package, sequence=2, action=action)
+        package = current
+        event_id = self._event_id(current, sequence=2, action=action)
         decision = (
             package.approved(reviewer, event_id)
             if action == "review"
@@ -98,7 +99,10 @@ class BusinessConfigRegistry:
         record = self._store.get_record(self._record_id(business_id, config_version))
         if record is None or record.kind != _RECORD_KIND or record.id != self._record_id(business_id, config_version):
             raise ConfigNotFoundError("config_version_not_found")
-        return self._from_payload(record.payload)
+        package = self._from_payload(record.payload)
+        if package.record_id != record.id or package.manifest.business_id != business_id or package.manifest.config_version != config_version:
+            raise ConfigNotFoundError("config_record_identity_mismatch")
+        return package
 
     def get_confirmed(self, business_id: str, config_version: str) -> BusinessConfigPackage:
         """只返回 confirmed fact 且具有具名人工批准的版本，其他状态一律阻断。"""
