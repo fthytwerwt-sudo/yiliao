@@ -19,6 +19,6 @@ class AgentRegistry:
         tool_results = [self._tools.execute(tool, payload) for tool in agent.tools if next(t for t in self._config.tools if t.tool_id == tool).enabled]
         state = "COMPLETED" if response["status"] == "MOCK" else "BLOCKED"
         result = {"agent_id": agent_id, "state": state, "model_status": response["status"], "response": response.get("content", ""), "tool_results": tool_results}
-        self._memory.put(f"agent:{agent_id}", {"state": "COMPLETED", "model_status": response["status"]})
+        self._memory.put(f"agent:{agent_id}", {"state": state, "model_status": response["status"]})
         return result
     def state(self, agent_id: str): return self._memory.get(f"agent:{agent_id}")

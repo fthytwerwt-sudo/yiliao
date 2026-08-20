@@ -25,6 +25,7 @@ class ModelGateway:
         self._config, self._providers = config, dict(providers)
     def chat(self, provider_name: str, messages: list[Mapping[str, str]]) -> Mapping[str, Any]:
         provider_config = next((p for p in self._config.providers if p.provider_name == provider_name), None)
-        if provider_config is None or provider_name not in self._providers: raise ValueError("model_provider_not_registered")
+        if provider_config is None: raise ValueError("model_provider_not_configured")
         if not provider_config.enabled: return {"status": "BLOCKED", "reason": "provider_disabled", "content": ""}
+        if provider_name not in self._providers: raise ValueError("model_provider_not_registered")
         return self._providers[provider_name].chat(messages, provider_config.model_name)

@@ -13,7 +13,11 @@ class WorkflowEngine:
         outputs = {}
         edges = definition["edges"]
         if any(not isinstance(edge, Mapping) or edge.get("from") not in nodes or edge.get("to") not in nodes for edge in edges): raise ValueError("workflow_edges_invalid")
+        incoming = {edge["to"] for edge in edges}; ordered = [node for node in nodes if node not in incoming]
         for node in nodes:
+            if node not in ordered: ordered.append(node)
+        for node in ordered:
+            if node in outputs: continue
             attempts = 0
             while True:
                 try:
@@ -24,7 +28,7 @@ class WorkflowEngine:
                     if attempts > int(definition.get("retry", 0)):
                         fallback = definition.get("fallback")
                         if fallback in nodes and fallback not in outputs:
-                            outputs[node] = self._agents.execute(fallback, payload)
+                            outputs[fallback] = self._agents.execute(fallback, payload)
                             break
                         else: raise
         return WorkflowResult(status="COMPLETED", outputs=outputs)

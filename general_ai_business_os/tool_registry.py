@@ -26,7 +26,7 @@ class ToolRegistry:
     def execute(self, tool_id: str, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         configured = next((t for t in self._config.tools if t.tool_id == tool_id), None)
         if configured is None or tool_id not in self._tools: raise ValueError("tool_not_registered")
-        result = {"status": "BLOCKED", "reason": "tool_disabled"} if not configured.enabled or configured.permission == "DEFAULT_DENY" else self._tools[tool_id].execute(payload)
+        result = {"status": "BLOCKED", "reason": "tool_permission_denied"} if not configured.enabled or configured.permission != "ALLOW" else self._tools[tool_id].execute(payload)
         self._log.append({"tool_id": tool_id, "status": result["status"]})
         return result
     def execution_log(self): return tuple(dict(item) for item in self._log)
