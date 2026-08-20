@@ -40,13 +40,16 @@ class GeneralFoundationTests(unittest.TestCase):
             event = AuditLogger(log_path).record(
                 action="adapter.request",
                 outcome="blocked",
-                details={"safe_code": "TEST_VALUE", "request_id": "TEST_REQUEST"},
+                details={"adapter": "content", "operation": "generate", "reason": "external_actions_disabled"},
             )
 
             persisted = log_path.read_text(encoding="utf-8")
 
-        self.assertIn("TEST_VALUE", persisted)
-        self.assertEqual({"safe_code": "TEST_VALUE", "request_id": "TEST_REQUEST"}, event.details)
+        self.assertIn("content", persisted)
+        self.assertEqual(
+            {"adapter": "content", "operation": "generate", "reason": "external_actions_disabled"},
+            event.details,
+        )
 
     def test_audit_logger_rejects_unknown_and_sensitive_free_text_before_persistence(self) -> None:
         """患者、健康、Token 或嵌套自由文本都不能变成审计日志的旁路。"""
@@ -57,7 +60,7 @@ class GeneralFoundationTests(unittest.TestCase):
             {"patient_name": "TEST_PERSON"},
             {"notes": "TEST_HEALTH_DETAIL"},
             {"access_token": "TEST_ACCESS_TOKEN"},
-            {"safe_code": {"nested": "TEST_UNTRUSTED"}},
+            {"adapter": {"nested": "TEST_UNTRUSTED"}},
         )
         with tempfile.TemporaryDirectory() as directory:
             log_path = Path(directory) / "audit.jsonl"
@@ -85,18 +88,53 @@ class GeneralFoundationTests(unittest.TestCase):
                 logger.record(
                     action="unsafe free text",
                     outcome="blocked",
-                    details={"safe_code": "TEST_VALUE"},
+                    details={"adapter": "content"},
                 )
             with self.assertRaisesRegex(ValueError, "audit_outcome_invalid"):
                 logger.record(
                     action="adapter.request",
                     outcome="unsafe free text",
-                    details={"safe_code": "TEST_VALUE"},
+                    details={"adapter": "content"},
                 )
 
             persisted = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
 
         self.assertEqual("", persisted)
+
+    def test_audit_logger_rejects_code_shaped_sensitive_values_in_every_audit_surface(self) -> None:
+        """没有空格的敏感字符串也不能伪装成系统 code 并绕过审计 allowlist。"""
+
+        from general_ai_business_os.audit.logger import AuditLogger
+
+        safe_details = {"adapter": "content", "operation": "generate", "reason": "external_actions_disabled"}
+        unsafe_detail_attempts = (
+            {"adapter": "PATIENT_NOTE"},
+            {"operation": "TEST_PERSON"},
+            {"status": "ghp_ABC123SECRET"},
+            {"reason": "TEST_HEALTH_DETAIL"},
+            {"safe_code": "TEST_PERSON"},
+            {"request_id": "ghp_ABC123SECRET"},
+            {"record_id": "PATIENT_NOTE"},
+            {"config_version": "TEST_HEALTH_DETAIL"},
+        )
+        unsafe_values = ("PATIENT_NOTE", "TEST_PERSON", "ghp_ABC123SECRET", "TEST_HEALTH_DETAIL")
+
+        with tempfile.TemporaryDirectory() as directory:
+            log_path = Path(directory) / "audit.jsonl"
+            logger = AuditLogger(log_path)
+            for details in unsafe_detail_attempts:
+                with self.assertRaisesRegex(ValueError, "audit_details"):
+                    logger.record(action="adapter.request", outcome="blocked", details=details)
+            for unsafe_value in unsafe_values:
+                with self.assertRaisesRegex(ValueError, "audit_action_invalid"):
+                    logger.record(action=unsafe_value, outcome="blocked", details=safe_details)
+                with self.assertRaisesRegex(ValueError, "audit_outcome_invalid"):
+                    logger.record(action="adapter.request", outcome=unsafe_value, details=safe_details)
+
+            persisted = log_path.read_text(encoding="utf-8") if log_path.exists() else ""
+
+        for unsafe_value in unsafe_values:
+            self.assertNotIn(unsafe_value, persisted)
 
     def test_mock_adapter_reports_dry_run_without_external_execution(self) -> None:
         """Mock 可以验证调用合同，但必须明确它没有触发外部副作用。"""

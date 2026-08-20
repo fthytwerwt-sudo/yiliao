@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import re
 from typing import Any, Dict
 
 from general_ai_business_os.domain.entities import AuditEvent, utc_now_isoformat
@@ -24,28 +23,43 @@ from general_ai_business_os.domain.entities import AuditEvent, utc_now_isoformat
 
 _ALLOWED_DETAIL_FIELDS = {
     "adapter",
-    "config_version",
     "count",
     "operation",
     "reason",
-    "record_id",
-    "request_id",
-    "safe_code",
     "status",
 }
-_SAFE_CODE_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
+_ALLOWED_ACTIONS = frozenset(
+    {
+        "adapter.request",
+        "config.import",
+        "config.review",
+        "storage.record",
+        "system.initialize",
+    }
+)
+_ALLOWED_OUTCOMES = frozenset({"blocked", "completed", "initialized", "mock", "rejected"})
+_ALLOWED_DETAIL_CODES = {
+    "adapter": frozenset({"content", "crm", "knowledge", "messaging", "search", "storage"}),
+    "operation": frozenset(
+        {"analyze", "create", "generate", "import", "initialize", "read", "retrieve", "review", "score", "update", "write"}
+    ),
+    "reason": frozenset(
+        {"action_required", "external_actions_disabled", "mock_dry_run", "permission_denied", "validation_rejected"}
+    ),
+    "status": frozenset({"BLOCKED", "DISABLED", "IMPLEMENTED", "MOCK"}),
+}
 
 
-def _require_safe_code(value: Any, *, field_name: str) -> str:
+def _require_allowed_code(value: Any, *, field_name: str, allowed_values: frozenset[str]) -> str:
     """
-    验证允许写入审计日志的代码型字符串。
+    验证允许写入审计日志的字段级 closed code（闭集代码）。
 
     关键逻辑：
-    审计 action、outcome 和 details 若可承载任意自然语言，仍可成为个人资料、健康信息或
-    Token 的旁路。因此基础层只接收有限字符集的系统代码，而不是尝试猜测所有敏感内容。
+    仅限制字符形状无法证明语义安全：没有空格的患者标识或 Token 仍然可能符合正则。
+    因此每个字段只接受维护者明确定义的有限系统值，未知值一律在落盘前拒绝。
     """
 
-    if not isinstance(value, str) or not _SAFE_CODE_PATTERN.fullmatch(value):
+    if not isinstance(value, str) or value not in allowed_values:
         raise ValueError(f"audit_{field_name}_invalid")
     return value
 
@@ -68,7 +82,14 @@ def _validate_details(details: Dict[str, Any]) -> Dict[str, Any]:
                 raise ValueError("audit_details_count_invalid")
             safe_details[key] = value
             continue
-        safe_details[key] = _require_safe_code(value, field_name=f"details_{key}")
+        allowed_values = _ALLOWED_DETAIL_CODES.get(key)
+        if allowed_values is None:
+            raise ValueError("audit_details_field_not_allowed")
+        safe_details[key] = _require_allowed_code(
+            value,
+            field_name=f"details_{key}",
+            allowed_values=allowed_values,
+        )
     return safe_details
 
 
@@ -82,8 +103,8 @@ class AuditLogger:
         """验证 allowlist 后写入一行 JSON；任一不安全字段会在落盘前直接拒绝。"""
 
         event = AuditEvent(
-            action=_require_safe_code(action, field_name="action"),
-            outcome=_require_safe_code(outcome, field_name="outcome"),
+            action=_require_allowed_code(action, field_name="action", allowed_values=_ALLOWED_ACTIONS),
+            outcome=_require_allowed_code(outcome, field_name="outcome", allowed_values=_ALLOWED_OUTCOMES),
             details=_validate_details(details),
             recorded_at=utc_now_isoformat(),
         )
