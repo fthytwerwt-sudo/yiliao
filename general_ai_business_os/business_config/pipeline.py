@@ -49,7 +49,7 @@ class BusinessConfigPipeline:
         package = self._validator.validate(manifest_payload, documents)
         if self._registry.exists(package.manifest.business_id, package.manifest.config_version):
             raise ConfigDuplicateVersionError("config_version_already_exists")
-        self._registry.save(package)
+        self._registry.stage_import(package)
         return package
 
     def approve(self, business_id: str, config_version: str, *, reviewer: str) -> BusinessConfigPackage:
@@ -68,6 +68,14 @@ class BusinessConfigPipeline:
             raise ConfigClassificationError("config_classification_not_confirmed")
         if package.manifest.review_status != ConfigReviewStatus.PENDING:
             raise ConfigValidationError("config_review_not_pending")
-        approved = package.approved(reviewer)
-        self._registry.save(approved)
-        return approved
+        return self._registry.record_decision(package, action="review", reviewer=reviewer)
+
+    def reject(self, business_id: str, config_version: str, *, reviewer: str) -> BusinessConfigPackage:
+        """记录具名拒绝事件；拒绝版本可审计但永远不能由 get_confirmed 消费。"""
+
+        if not isinstance(reviewer, str) or not _SAFE_REVIEWER.fullmatch(reviewer):
+            raise ConfigValidationError("config_reviewer_invalid")
+        package = self._registry.get(business_id, config_version)
+        if package.manifest.review_status != ConfigReviewStatus.PENDING:
+            raise ConfigValidationError("config_review_not_pending")
+        return self._registry.record_decision(package, action="reject", reviewer=reviewer)

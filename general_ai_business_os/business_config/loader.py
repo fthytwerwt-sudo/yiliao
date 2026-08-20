@@ -78,4 +78,31 @@ class BusinessConfigLoader:
             raise ConfigLoadError("config_document_parse_failed") from error
         if not isinstance(payload, Mapping):
             raise ConfigLoadError("config_document_mapping_required")
+        try:
+            BusinessConfigLoader._ensure_acyclic(payload, active_container_ids=set())
+        except RecursionError as error:
+            raise ConfigLoadError("config_document_cycle_not_allowed") from error
         return payload
+
+    @staticmethod
+    def _ensure_acyclic(value: Any, *, active_container_ids: set[int]) -> None:
+        """拒绝 YAML alias 形成的循环容器，避免冻结/序列化递归耗尽并统一返回结构化错误。"""
+
+        if isinstance(value, Mapping):
+            identifier = id(value)
+            if identifier in active_container_ids:
+                raise ConfigLoadError("config_document_cycle_not_allowed")
+            active_container_ids.add(identifier)
+            for key, item in value.items():
+                if not isinstance(key, str):
+                    raise ConfigLoadError("config_document_key_not_string")
+                BusinessConfigLoader._ensure_acyclic(item, active_container_ids=active_container_ids)
+            active_container_ids.remove(identifier)
+        elif isinstance(value, list):
+            identifier = id(value)
+            if identifier in active_container_ids:
+                raise ConfigLoadError("config_document_cycle_not_allowed")
+            active_container_ids.add(identifier)
+            for item in value:
+                BusinessConfigLoader._ensure_acyclic(item, active_container_ids=active_container_ids)
+            active_container_ids.remove(identifier)

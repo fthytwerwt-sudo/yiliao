@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from enum import Enum
+import re
 from typing import Any, Mapping, Tuple
 
 from general_ai_business_os.domain.immutability import freeze_mapping, to_mutable_json
@@ -47,6 +48,50 @@ class ConfigNotConfirmedError(BusinessConfigError):
 
 class ConfigClassificationError(BusinessConfigError):
     """试图将不属于 confirmed fact 的输入通过审核流程提升为可消费配置。"""
+
+
+_SAFE_IDENTIFIER = re.compile(r"^[A-Z][A-Z0-9_]{2,63}$")
+_SAFE_EVENT_IDENTIFIER = re.compile(r"^config-event:[A-Z][A-Z0-9_]{2,63}:[A-Z][A-Z0-9_]{2,63}:2:(?:review|reject)$")
+_DOCUMENT_SCHEMAS = {
+    "market": {"market_code": "code", "segment_codes": "code_list"},
+    "customer": {"persona_code": "code", "need_codes": "code_list"},
+    "product": {"product_code": "code", "fact_refs": "code_list"},
+    "channel": {"channel_code": "code", "allowed_action_codes": "code_list"},
+    "content_rules": {"template_codes": "code_list", "quality_rule_codes": "code_list"},
+    "sales_rules": {"intent_codes": "code_list", "blocked_term_codes": "code_list"},
+    "lead_rules": {"required_profile_fields": "code_list", "score_rule_codes": "code_list"},
+}
+
+
+def _require_identifier(value: Any, field_name: str) -> str:
+    """所有长期可引用的配置标识使用受限 code，禁止自由文本伪装 provenance 或审批身份。"""
+
+    if not isinstance(value, str) or not _SAFE_IDENTIFIER.fullmatch(value):
+        raise ConfigValidationError(f"config_{field_name}_invalid")
+    return value
+
+
+def _validate_documents(documents: Mapping[str, Any]) -> Mapping[str, Any]:
+    """对每个可选领域文件执行 closed field schema，防止未知数据直接成为 Agent 输入。"""
+
+    if not isinstance(documents, Mapping):
+        raise ConfigValidationError("config_documents_mapping_required")
+    normalized = {}
+    for name, payload in documents.items():
+        schema = _DOCUMENT_SCHEMAS.get(name)
+        if schema is None or not isinstance(payload, Mapping) or set(payload) != set(schema):
+            raise ConfigValidationError("config_document_schema_invalid")
+        normalized_document = {}
+        for field, field_type in schema.items():
+            value = payload[field]
+            if field_type == "code":
+                normalized_document[field] = _require_identifier(value, field)
+            else:
+                if not isinstance(value, (list, tuple)) or not value:
+                    raise ConfigValidationError(f"config_{field}_required")
+                normalized_document[field] = [_require_identifier(item, field) for item in value]
+        normalized[name] = normalized_document
+    return normalized
 
 
 class ConfigClassification(str, Enum):
@@ -85,11 +130,50 @@ class BusinessConfigManifest:
     classification: ConfigClassification
     review_status: ConfigReviewStatus
     reviewed_by: str | None
+    approval_event_id: str | None = None
 
-    def approved(self, reviewer: str) -> "BusinessConfigManifest":
+    def __post_init__(self) -> None:
+        """公开构造也必须执行 schema、identity、provenance 和状态组合验证。"""
+
+        if isinstance(self.schema_version, bool) or self.schema_version != 1:
+            raise ConfigValidationError("config_schema_version_invalid")
+        object.__setattr__(self, "business_id", _require_identifier(self.business_id, "business_id"))
+        object.__setattr__(self, "config_version", _require_identifier(self.config_version, "config_version"))
+        if not self.source_refs:
+            raise ConfigValidationError("config_source_refs_required")
+        refs = tuple(_require_identifier(value, "source_ref") for value in self.source_refs)
+        if len(set(refs)) != len(refs):
+            raise ConfigValidationError("config_source_refs_duplicate")
+        object.__setattr__(self, "source_refs", refs)
+        if self.review_status == ConfigReviewStatus.PENDING:
+            if self.reviewed_by is not None or self.approval_event_id is not None:
+                raise ConfigValidationError("config_pending_must_not_have_decision_evidence")
+        elif self.review_status in (ConfigReviewStatus.APPROVED, ConfigReviewStatus.REJECTED):
+            object.__setattr__(self, "reviewed_by", _require_identifier(self.reviewed_by, "reviewer"))
+            if not isinstance(self.approval_event_id, str) or not _SAFE_EVENT_IDENTIFIER.fullmatch(self.approval_event_id):
+                raise ConfigValidationError("config_approval_event_invalid")
+        else:
+            raise ConfigValidationError("config_review_status_invalid")
+
+    def approved(self, reviewer: str, approval_event_id: str) -> "BusinessConfigManifest":
         """生成有具名 reviewer 的批准副本；调用方仍须先经过 classification gate。"""
 
-        return replace(self, review_status=ConfigReviewStatus.APPROVED, reviewed_by=reviewer)
+        return replace(
+            self,
+            review_status=ConfigReviewStatus.APPROVED,
+            reviewed_by=reviewer,
+            approval_event_id=approval_event_id,
+        )
+
+    def rejected(self, reviewer: str, decision_event_id: str) -> "BusinessConfigManifest":
+        """生成带可回读拒绝事件的版本，拒绝状态仍不可被 Agent 消费。"""
+
+        return replace(
+            self,
+            review_status=ConfigReviewStatus.REJECTED,
+            reviewed_by=reviewer,
+            approval_event_id=decision_event_id,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """输出新的可 JSON 编码 manifest 快照，不暴露内部 tuple 引用。"""
@@ -102,6 +186,7 @@ class BusinessConfigManifest:
             "classification": self.classification.value,
             "review_status": self.review_status.value,
             "reviewed_by": self.reviewed_by,
+            "approval_event_id": self.approval_event_id,
         }
 
 
@@ -121,7 +206,7 @@ class BusinessConfigPackage:
     def __post_init__(self) -> None:
         """深层冻结文档，避免导入后调用者通过容器别名改写已审核版本。"""
 
-        object.__setattr__(self, "documents", freeze_mapping(self.documents))
+        object.__setattr__(self, "documents", freeze_mapping(_validate_documents(self.documents)))
 
     @property
     def record_id(self) -> str:
@@ -129,10 +214,21 @@ class BusinessConfigPackage:
 
         return f"config:{self.manifest.business_id}:{self.manifest.config_version}"
 
-    def approved(self, reviewer: str) -> "BusinessConfigPackage":
+    def approved(self, reviewer: str, approval_event_id: str) -> "BusinessConfigPackage":
         """返回批准后的不可变版本；不修改原 pending 版本。"""
 
-        return BusinessConfigPackage(manifest=self.manifest.approved(reviewer), documents=self.documents)
+        return BusinessConfigPackage(
+            manifest=self.manifest.approved(reviewer, approval_event_id),
+            documents=self.documents,
+        )
+
+    def rejected(self, reviewer: str, decision_event_id: str) -> "BusinessConfigPackage":
+        """返回不可消费的拒绝版本，保留与 lifecycle event 的绑定。"""
+
+        return BusinessConfigPackage(
+            manifest=self.manifest.rejected(reviewer, decision_event_id),
+            documents=self.documents,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """导出新的 JSON-compatible 快照，供 Storage Port 持久化。"""

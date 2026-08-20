@@ -15,7 +15,7 @@ SQLite 是开发实现；未来 PostgreSQL 可实现相同接口。
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Tuple
 
 from general_ai_business_os.domain.entities import StoredRecord
 
@@ -34,3 +34,7 @@ class StoragePort(ABC):
     @abstractmethod
     def get_record(self, record_id: str) -> Optional[StoredRecord]:
         """按明确 ID 回读记录；缺失时返回 None 而非隐式创建默认值。"""
+
+    @abstractmethod
+    def list_records(self, kind: str) -> Tuple[StoredRecord, ...]:
+        """按中性 kind 回读 append-only 事件或版本记录，结果按创建顺序稳定排序。"""

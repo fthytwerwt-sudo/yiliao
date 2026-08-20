@@ -99,3 +99,25 @@ class SqliteStore(StoragePort):
                 "updated_at": row["updated_at"],
             }
         )
+
+    def list_records(self, kind: str) -> tuple[StoredRecord, ...]:
+        """按 kind 稳定回读记录，供 lifecycle evidence 复核而不泄漏 SQL 行对象。"""
+
+        self.migrate()
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT id, kind, payload_json, created_at, updated_at FROM system_records WHERE kind = ? ORDER BY created_at, id",
+                (kind,),
+            ).fetchall()
+        return tuple(
+            StoredRecord.from_dict(
+                {
+                    "id": row["id"],
+                    "kind": row["kind"],
+                    "payload": json.loads(row["payload_json"]),
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"],
+                }
+            )
+            for row in rows
+        )

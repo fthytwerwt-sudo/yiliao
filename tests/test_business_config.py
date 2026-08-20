@@ -56,6 +56,7 @@ class BusinessConfigTests(unittest.TestCase):
 
         from general_ai_business_os.business_config.contracts import (
             ConfigClassification,
+            ConfigNotFoundError,
             ConfigNotConfirmedError,
             ConfigReviewStatus,
         )
@@ -81,11 +82,13 @@ class BusinessConfigTests(unittest.TestCase):
             approved = pipeline.approve("TEST_BUSINESS", "TEST_CONFIRMED", reviewer="TEST_REVIEWER")
             reopened_registry = BusinessConfigRegistry(SqliteStore(root / "state.sqlite3"))
             consumed = reopened_registry.get_confirmed("TEST_BUSINESS", "TEST_CONFIRMED")
+            events = store.list_records("business_config_event")
 
         self.assertEqual(ConfigClassification.CONFIRMED_FACT, imported.manifest.classification)
         self.assertEqual(ConfigReviewStatus.APPROVED, approved.manifest.review_status)
         self.assertEqual("TEST_REVIEWER", approved.manifest.reviewed_by)
         self.assertEqual("TEST_CONFIRMED", consumed.manifest.config_version)
+        self.assertEqual(["import", "review"], [event.payload["action"] for event in events])
 
     def test_research_classification_cannot_be_promoted_by_config_import_or_review(self) -> None:
         """配置流程只能接收事实裁决结果，不得擅自把 Research 升级为 confirmed data。"""
@@ -157,6 +160,12 @@ class BusinessConfigTests(unittest.TestCase):
             with self.assertRaises(ConfigLoadError):
                 pipeline.import_package(malformed)
 
+            malformed_json = root / "malformed_json"
+            malformed_json.mkdir()
+            (malformed_json / "manifest.json").write_text("{", encoding="utf-8")
+            with self.assertRaises(ConfigLoadError):
+                pipeline.import_package(malformed_json)
+
             unknown_document = self._write_package(
                 root / "unknown_document",
                 manifest=self._manifest(config_version="TEST_UNKNOWN_DOCUMENT"),
@@ -165,6 +174,122 @@ class BusinessConfigTests(unittest.TestCase):
             (unknown_document / "unexpected.json").write_text("{}", encoding="utf-8")
             with self.assertRaises(ConfigValidationError):
                 pipeline.import_package(unknown_document)
+
+    def test_public_constructor_registry_and_storage_tampering_cannot_forge_confirmed_config(self) -> None:
+        """confirmed registry 必须验证自身和审批事件，不能信任公开对象或通用 Storage 里的自称状态。"""
+
+        from general_ai_business_os.business_config.contracts import (
+            BusinessConfigManifest,
+            BusinessConfigPackage,
+            ConfigClassification,
+            ConfigNotFoundError,
+            ConfigNotConfirmedError,
+            ConfigReviewStatus,
+            ConfigValidationError,
+        )
+        from general_ai_business_os.business_config.registry import BusinessConfigRegistry
+        from general_ai_business_os.domain.entities import StoredRecord
+        from general_ai_business_os.storage.sqlite_store import SqliteStore
+
+        with self.assertRaises(ConfigValidationError):
+            BusinessConfigManifest(
+                schema_version=999,
+                business_id="x",
+                config_version="bad",
+                source_refs=(),
+                classification=ConfigClassification.CONFIRMED_FACT,
+                review_status=ConfigReviewStatus.APPROVED,
+                reviewed_by="",
+            )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = SqliteStore(root / "state.sqlite3")
+            registry = BusinessConfigRegistry(store)
+            tampered_payload = {
+                "manifest": {
+                    "schema_version": 999,
+                    "business_id": "DIFFERENT_ID",
+                    "config_version": "DIFFERENT_VERSION",
+                    "source_refs": [],
+                    "classification": "CONFIRMED_FACT",
+                    "review_status": "APPROVED",
+                    "reviewed_by": "",
+                    "approval_event_id": "TEST_EVENT",
+                    "unknown_manifest_field": "TEST_VALUE",
+                },
+                "documents": {"market": {"unknown_field": "TEST_VALUE"}},
+                "unknown_package_field": "TEST_VALUE",
+            }
+            store.save_record(
+                StoredRecord.new(
+                    record_id="config:TEST_BUSINESS:TEST_TAMPER",
+                    kind="business_config_package",
+                    payload=tampered_payload,
+                )
+            )
+
+            with self.assertRaises((ConfigNotConfirmedError, ConfigNotFoundError)):
+                registry.get_confirmed("TEST_BUSINESS", "TEST_TAMPER")
+
+    def test_rejected_package_and_unknown_domain_fields_cannot_be_consumed(self) -> None:
+        """审核拒绝保持可回读但不可消费，closed document schema 不接收权限或业务伪装字段。"""
+
+        from general_ai_business_os.business_config.contracts import ConfigNotConfirmedError, ConfigValidationError
+        from general_ai_business_os.business_config.pipeline import BusinessConfigPipeline
+        from general_ai_business_os.business_config.registry import BusinessConfigRegistry
+        from general_ai_business_os.storage.sqlite_store import SqliteStore
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = SqliteStore(root / "state.sqlite3")
+            pipeline = BusinessConfigPipeline(store)
+            registry = BusinessConfigRegistry(store)
+            rejected_path = self._write_package(
+                root / "rejected",
+                manifest=self._manifest(config_version="TEST_REJECTED"),
+                format_name="json",
+            )
+            pipeline.import_package(rejected_path)
+            rejected = pipeline.reject("TEST_BUSINESS", "TEST_REJECTED", reviewer="TEST_REVIEWER")
+            with self.assertRaises(ConfigNotConfirmedError):
+                registry.get_confirmed("TEST_BUSINESS", "TEST_REJECTED")
+
+            unknown_field_path = self._write_package(
+                root / "unknown_domain",
+                manifest=self._manifest(config_version="TEST_DOMAIN_UNKNOWN"),
+                format_name="yaml",
+            )
+            (unknown_field_path / "market.yaml").write_text(
+                "market_code: TEST_MARKET\nsegment_codes:\n  - TEST_SEGMENT\nunknown_field: TEST_VALUE\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(ConfigValidationError):
+                pipeline.import_package(unknown_field_path)
+
+        self.assertEqual("REJECTED", rejected.manifest.review_status.value)
+
+    def test_cyclic_yaml_alias_is_rejected_as_a_config_load_error(self) -> None:
+        """safe_load 不执行对象不等于无循环；循环容器必须在冻结前转为稳定阻断。"""
+
+        from general_ai_business_os.business_config.contracts import ConfigLoadError
+        from general_ai_business_os.business_config.pipeline import BusinessConfigPipeline
+        from general_ai_business_os.storage.sqlite_store import SqliteStore
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            package_path = self._write_package(
+                root / "cyclic_yaml",
+                manifest=self._manifest(config_version="TEST_CYCLIC"),
+                format_name="yaml",
+            )
+            (package_path / "market.yaml").write_text(
+                "market_code: TEST_MARKET\nsegment_codes: &cycle\n  - *cycle\n",
+                encoding="utf-8",
+            )
+            pipeline = BusinessConfigPipeline(SqliteStore(root / "state.sqlite3"))
+            with self.assertRaises(ConfigLoadError):
+                pipeline.import_package(package_path)
 
     def test_cli_config_import_persists_pending_config_without_enabling_external_actions(self) -> None:
         """CLI 可导入本地配置包，但只输出 pending 状态，不能借此产生外部动作。"""
@@ -251,8 +376,8 @@ class BusinessConfigTests(unittest.TestCase):
 
         path.mkdir()
         documents = {
-            "market": {"scope": "TEST_SCOPE"},
-            "sales_rules": {"rule_code": "TEST_RULE"},
+            "market": {"market_code": "TEST_MARKET", "segment_codes": ["TEST_SEGMENT"]},
+            "sales_rules": {"intent_codes": ["TEST_INTENT"], "blocked_term_codes": ["TEST_BLOCKED"]},
         }
         if format_name == "json":
             (path / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
@@ -273,8 +398,14 @@ class BusinessConfigTests(unittest.TestCase):
                 )
             )
             (path / "manifest.yaml").write_text(yaml_manifest, encoding="utf-8")
-            (path / "market.yaml").write_text("scope: TEST_SCOPE\n", encoding="utf-8")
-            (path / "sales_rules.yaml").write_text("rule_code: TEST_RULE\n", encoding="utf-8")
+            (path / "market.yaml").write_text(
+                "market_code: TEST_MARKET\nsegment_codes:\n  - TEST_SEGMENT\n",
+                encoding="utf-8",
+            )
+            (path / "sales_rules.yaml").write_text(
+                "intent_codes:\n  - TEST_INTENT\nblocked_term_codes:\n  - TEST_BLOCKED\n",
+                encoding="utf-8",
+            )
             return path
         raise AssertionError("unsupported_test_format")
 

@@ -9,7 +9,7 @@
 CLI 创建本地 SQLite 状态并输出可机读的安全运行状态。
 
 边界：
-此阶段只初始化本地技术状态；不导入业务配置、不发消息、不发布内容或连接外部服务。
+当前支持本地 `system init` 与 pending-only `config import`；不批准配置、不发消息、不发布内容或连接外部服务。
 """
 
 from __future__ import annotations

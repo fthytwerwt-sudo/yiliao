@@ -29,6 +29,7 @@ from general_ai_business_os.storage.contracts import StoragePort
 
 
 _RECORD_KIND = "business_config_package"
+_EVENT_KIND = "business_config_event"
 
 
 class BusinessConfigRegistry:
@@ -42,9 +43,11 @@ class BusinessConfigRegistry:
 
         return self._store.get_record(self._record_id(business_id, config_version)) is not None
 
-    def save(self, package: BusinessConfigPackage) -> None:
-        """保存 pending 或 approved package；状态升级只能由 Pipeline 的审核门生成。"""
+    def stage_import(self, package: BusinessConfigPackage) -> None:
+        """保存首次 pending 版本并写入 append-only import event；同 ID 不允许覆盖。"""
 
+        if self.exists(package.manifest.business_id, package.manifest.config_version):
+            raise ConfigNotConfirmedError("config_version_already_exists")
         self._store.save_record(
             StoredRecord.new(
                 record_id=package.record_id,
@@ -52,12 +55,48 @@ class BusinessConfigRegistry:
                 payload=package.to_dict(),
             )
         )
+        self._store.save_record(
+            StoredRecord.new(
+                record_id=self._event_id(package, sequence=1, action="import"),
+                kind=_EVENT_KIND,
+                payload=self._event_payload(package, sequence=1, action="import", reviewer=None),
+            )
+        )
+
+    def record_decision(self, package: BusinessConfigPackage, *, action: str, reviewer: str) -> BusinessConfigPackage:
+        """写入 review/reject event 后更新当前快照，使批准版本拥有可回读证据。"""
+
+        current = self.get(package.manifest.business_id, package.manifest.config_version)
+        if current.manifest.review_status != ConfigReviewStatus.PENDING:
+            raise ConfigNotConfirmedError("config_review_not_pending")
+        event_id = self._event_id(package, sequence=2, action=action)
+        decision = (
+            package.approved(reviewer, event_id)
+            if action == "review"
+            else package.rejected(reviewer, event_id)
+        )
+        self._store.save_record(
+            StoredRecord.new(record_id=decision.record_id, kind=_RECORD_KIND, payload=decision.to_dict())
+        )
+        self._store.save_record(
+            StoredRecord.new(
+                record_id=event_id,
+                kind=_EVENT_KIND,
+                payload=self._event_payload(decision, sequence=2, action=action, reviewer=reviewer),
+            )
+        )
+        return decision
+
+    def save(self, _package: BusinessConfigPackage) -> None:
+        """拒绝绕过 Pipeline 的公开保存；配置状态只能由 stage_import/record_decision 写入。"""
+
+        raise ConfigNotConfirmedError("config_registry_save_not_public")
 
     def get(self, business_id: str, config_version: str) -> BusinessConfigPackage:
         """回读任意已导入版本；调用者若需要 Agent 输入必须使用 get_confirmed。"""
 
         record = self._store.get_record(self._record_id(business_id, config_version))
-        if record is None or record.kind != _RECORD_KIND:
+        if record is None or record.kind != _RECORD_KIND or record.id != self._record_id(business_id, config_version):
             raise ConfigNotFoundError("config_version_not_found")
         return self._from_payload(record.payload)
 
@@ -72,6 +111,12 @@ class BusinessConfigRegistry:
             or manifest.reviewed_by is None
         ):
             raise ConfigNotConfirmedError("config_version_not_confirmed")
+        approval = self._store.get_record(manifest.approval_event_id)
+        if approval is None or approval.kind != _EVENT_KIND:
+            raise ConfigNotConfirmedError("config_approval_event_missing")
+        expected_action = "review" if manifest.review_status == ConfigReviewStatus.APPROVED else "reject"
+        if approval.payload != self._event_payload(package, sequence=2, action=expected_action, reviewer=manifest.reviewed_by):
+            raise ConfigNotConfirmedError("config_approval_event_invalid")
         return package
 
     @staticmethod
@@ -84,20 +129,60 @@ class BusinessConfigRegistry:
     def _from_payload(payload: Mapping[str, Any]) -> BusinessConfigPackage:
         """从 Storage 快照恢复领域对象，避免 Registry 依赖 SQLite row 或 JSON 字段细节。"""
 
+        if set(payload) != {"manifest", "documents"}:
+            raise ConfigNotFoundError("config_record_payload_fields_invalid")
         manifest_payload = payload.get("manifest")
         documents = payload.get("documents")
         if not isinstance(manifest_payload, Mapping) or not isinstance(documents, Mapping):
             raise ConfigNotFoundError("config_record_payload_invalid")
+        if set(manifest_payload) != {
+            "schema_version",
+            "business_id",
+            "config_version",
+            "source_refs",
+            "classification",
+            "review_status",
+            "reviewed_by",
+            "approval_event_id",
+        }:
+            raise ConfigNotFoundError("config_record_manifest_fields_invalid")
         try:
             manifest = BusinessConfigManifest(
-                schema_version=int(manifest_payload["schema_version"]),
-                business_id=str(manifest_payload["business_id"]),
-                config_version=str(manifest_payload["config_version"]),
-                source_refs=tuple(str(item) for item in manifest_payload["source_refs"]),
-                classification=ConfigClassification(str(manifest_payload["classification"])),
-                review_status=ConfigReviewStatus(str(manifest_payload["review_status"])),
+                schema_version=manifest_payload["schema_version"],
+                business_id=manifest_payload["business_id"],
+                config_version=manifest_payload["config_version"],
+                source_refs=tuple(manifest_payload["source_refs"]),
+                classification=ConfigClassification(manifest_payload["classification"]),
+                review_status=ConfigReviewStatus(manifest_payload["review_status"]),
                 reviewed_by=manifest_payload.get("reviewed_by"),
+                approval_event_id=manifest_payload.get("approval_event_id"),
             )
         except (KeyError, TypeError, ValueError) as error:
             raise ConfigNotFoundError("config_record_manifest_invalid") from error
         return BusinessConfigPackage(manifest=manifest, documents=documents)
+
+    @staticmethod
+    def _event_id(package: BusinessConfigPackage, *, sequence: int, action: str) -> str:
+        """事件 ID 与版本、顺序和动作绑定，便于 get_confirmed 回读审核因果。"""
+
+        return f"config-event:{package.manifest.business_id}:{package.manifest.config_version}:{sequence}:{action}"
+
+    @staticmethod
+    def _event_payload(
+        package: BusinessConfigPackage,
+        *,
+        sequence: int,
+        action: str,
+        reviewer: str | None,
+    ) -> Mapping[str, Any]:
+        """事件只保存受限 identity/status/reviewer code，不保存业务内容或自由文本。"""
+
+        return {
+            "business_id": package.manifest.business_id,
+            "config_version": package.manifest.config_version,
+            "sequence": sequence,
+            "action": action,
+            "reviewer": reviewer,
+            "classification": package.manifest.classification.value,
+            "review_status": package.manifest.review_status.value,
+        }
