@@ -371,7 +371,10 @@ class CollaborationSystemContractTests(unittest.TestCase):
         self.assertFalse(old_thin_live_path.exists())
         self.assertTrue(old_thin_archive_marker.exists())
         self.assertTrue(old_business_marker.exists())
-        self.assertIn(str(PACKAGE), index)
+        # local_path_index.md 记录正式工作区的绝对路径，而本测试也必须能在隔离 worktree
+        # 中执行。验证 repository-relative package 片段可同时证明索引指向正确包，且不把
+        # 临时 worktree 路径误当作项目事实。
+        self.assertIn(str(PACKAGE.relative_to(ROOT)), index)
         self.assertIn("DEPRECATED_SEMANTICALLY_INCOMPLETE_DO_NOT_UPLOAD", index)
 
     def test_legacy_execution_rules_are_pointers_only(self) -> None:
