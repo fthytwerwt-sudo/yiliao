@@ -19,10 +19,12 @@ class MockTool(Tool):
 
 class ToolRegistry:
     """Tool 仅可动态注册；disabled Tool 不执行，避免配置存在即外部动作。"""
-    def __init__(self, config: AiSystemConfig) -> None: self._config, self._tools = config, {}
+    def __init__(self, config: AiSystemConfig) -> None: self._config, self._tools, self._log = config, {}, []
     def register(self, tool: Tool) -> None: self._tools[tool.tool_id] = tool
     def execute(self, tool_id: str, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         configured = next((t for t in self._config.tools if t.tool_id == tool_id), None)
         if configured is None or tool_id not in self._tools: raise ValueError("tool_not_registered")
-        if not configured.enabled: return {"status": "BLOCKED", "reason": "tool_disabled"}
-        return self._tools[tool_id].execute(payload)
+        result = {"status": "BLOCKED", "reason": "tool_disabled"} if not configured.enabled else self._tools[tool_id].execute(payload)
+        self._log.append({"tool_id": tool_id, "status": result["status"]})
+        return result
+    def execution_log(self): return tuple(dict(item) for item in self._log)

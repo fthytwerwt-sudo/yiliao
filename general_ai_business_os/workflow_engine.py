@@ -10,5 +10,18 @@ class WorkflowEngine:
     def run(self, definition: Mapping[str, Any], payload: Mapping[str, Any]) -> WorkflowResult:
         nodes = definition.get("nodes")
         if not isinstance(nodes, list) or not isinstance(definition.get("edges"), list): raise ValueError("workflow_definition_invalid")
-        outputs = {node: self._agents.execute(node, payload) for node in nodes}
+        outputs = {}
+        for node in nodes:
+            attempts = 0
+            while True:
+                try:
+                    outputs[node] = self._agents.execute(node, payload)
+                    break
+                except ValueError:
+                    attempts += 1
+                    if attempts > int(definition.get("retry", 0)):
+                        fallback = definition.get("fallback")
+                        if fallback in nodes and fallback not in outputs:
+                            outputs[node] = self._agents.execute(fallback, payload)
+                        else: raise
         return WorkflowResult(status="COMPLETED", outputs=outputs)
