@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
+import re
 from typing import Any, Dict, Mapping
 
 from general_ai_business_os.domain.immutability import freeze_mapping, to_mutable_json
@@ -92,6 +93,9 @@ _ALLOWED_AUDIT_DETAIL_CODES = {
     ),
     "status": frozenset({"BLOCKED", "DISABLED", "IMPLEMENTED", "MOCK"}),
 }
+_RFC3339_TIMESTAMP_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$"
+)
 
 
 def _require_audit_code(value: Any, *, field_name: str, allowed_values: frozenset[str]) -> str:
@@ -105,6 +109,8 @@ def _require_audit_code(value: Any, *, field_name: str, allowed_values: frozense
 def _validate_audit_details(details: Mapping[str, Any]) -> Dict[str, Any]:
     """验证最小审计详情；未知/嵌套/自由文本在构造 AuditEvent 前拒绝。"""
 
+    if not isinstance(details, Mapping):
+        raise ValueError("audit_details_invalid")
     safe_details: Dict[str, Any] = {}
     for key, value in details.items():
         if key == "count":
@@ -132,10 +138,10 @@ def _normalize_audit_recorded_at(value: Any) -> str:
     因此只接受带时区的 ISO-8601 字符串，并固定导出为秒级 UTC 格式。
     """
 
-    if not isinstance(value, str):
+    if not isinstance(value, str) or not _RFC3339_TIMESTAMP_PATTERN.fullmatch(value):
         raise ValueError("audit_recorded_at_invalid")
     try:
-        parsed = datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(f"{value[:-1]}+00:00" if value.endswith("Z") else value)
     except ValueError as error:
         raise ValueError("audit_recorded_at_invalid") from error
     if parsed.tzinfo is None or parsed.utcoffset() is None:

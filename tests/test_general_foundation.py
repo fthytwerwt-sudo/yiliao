@@ -254,6 +254,19 @@ class GeneralFoundationTests(unittest.TestCase):
                     details={"adapter": "content"},
                     recorded_at={"nested": unsafe_value},
                 )
+        for invalid_timestamp in (
+            "2026-08-20X00:00:00+00:00",
+            "2026-08-20\n00:00:00+00:00",
+            "2026-08-20T00:00:00+00:00 trailing",
+            "2026-08-20T00:00:00",
+        ):
+            with self.assertRaisesRegex(ValueError, "audit_recorded_at_invalid"):
+                AuditEvent(
+                    action="adapter.request",
+                    outcome="blocked",
+                    details={"adapter": "content"},
+                    recorded_at=invalid_timestamp,
+                )
 
         event = AuditEvent(
             action="adapter.request",
@@ -262,6 +275,13 @@ class GeneralFoundationTests(unittest.TestCase):
             recorded_at="2026-08-20T08:00:00+08:00",
         )
         self.assertEqual("2026-08-20T00:00:00+00:00", event.recorded_at)
+        z_event = AuditEvent(
+            action="adapter.request",
+            outcome="blocked",
+            details={"adapter": "content"},
+            recorded_at="2026-08-20T00:00:00Z",
+        )
+        self.assertEqual("2026-08-20T00:00:00+00:00", z_event.recorded_at)
         exported = event.to_dict()
         exported["recorded_at"] = "ghp_ABC123SECRET"
         self.assertEqual("2026-08-20T00:00:00+00:00", event.recorded_at)
@@ -277,6 +297,19 @@ class GeneralFoundationTests(unittest.TestCase):
         persisted_text = json.dumps(recovered.to_dict(), ensure_ascii=False, sort_keys=True)
         for unsafe_value in unsafe_values:
             self.assertNotIn(unsafe_value, persisted_text)
+
+    def test_audit_event_rejects_non_mapping_details_with_the_audit_error_contract(self) -> None:
+        """错误类型也属于安全合同，非法 details 不应以 AttributeError 泄漏实现细节。"""
+
+        from general_ai_business_os.domain.entities import AuditEvent
+
+        with self.assertRaisesRegex(ValueError, "audit_details_invalid"):
+            AuditEvent(
+                action="adapter.request",
+                outcome="blocked",
+                details=["TEST_UNTRUSTED"],
+                recorded_at="2026-08-20T00:00:00+00:00",
+            )
 
     def test_mock_adapter_reports_dry_run_without_external_execution(self) -> None:
         """Mock 可以验证调用合同，但必须明确它没有触发外部副作用。"""
