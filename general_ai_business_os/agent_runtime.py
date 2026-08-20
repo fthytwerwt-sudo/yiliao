@@ -11,12 +11,14 @@ class AgentRegistry:
         self._config, self._gateway, self._tools = config, gateway, tools
         self._memory = memory or InMemoryStore()
         self._agents = {agent.agent_id: agent for agent in config.agents}
+        if len(self._agents) != len(config.agents): raise ValueError("agent_identifier_duplicate")
     def execute(self, agent_id: str, payload: Mapping[str, Any]) -> Mapping[str, Any]:
         agent = self._agents.get(agent_id)
         if agent is None: raise ValueError("agent_not_registered")
         response = self._gateway.chat(agent.model_provider, [{"role": "system", "content": agent.system_prompt}, {"role": "user", "content": str(payload.get("input", ""))}])
         tool_results = [self._tools.execute(tool, payload) for tool in agent.tools if next(t for t in self._config.tools if t.tool_id == tool).enabled]
-        result = {"agent_id": agent_id, "state": "COMPLETED", "model_status": response["status"], "response": response["content"], "tool_results": tool_results}
+        state = "COMPLETED" if response["status"] == "MOCK" else "BLOCKED"
+        result = {"agent_id": agent_id, "state": state, "model_status": response["status"], "response": response.get("content", ""), "tool_results": tool_results}
         self._memory.put(f"agent:{agent_id}", {"state": "COMPLETED", "model_status": response["status"]})
         return result
     def state(self, agent_id: str): return self._memory.get(f"agent:{agent_id}")

@@ -17,7 +17,7 @@ class AgentOsRuntimeTests(unittest.TestCase):
 
         config = AiSystemConfig.from_mapping(
             {
-                "providers": [{"provider_name": "OPENAI", "model_name": "TEST_MODEL", "endpoint": "https://example.invalid", "api_key_reference": "SECRET_REF_TEST", "enabled": False, "timeout": 1, "cost_limit": 0}],
+                "providers": [{"provider_name": "OPENAI", "model_name": "TEST_MODEL", "endpoint": "https://example.invalid", "api_key_reference": "SECRET_REF_TEST", "enabled": True, "timeout": 1, "cost_limit": 0}],
                 "agents": [{"agent_id": "TEST_AGENT", "name": "TEST_AGENT", "role": "TEST_ROLE", "system_prompt": "TEST_PROMPT", "model_provider": "OPENAI", "tools": ["TEST_TOOL"], "memory_policy": "NONE", "permission_policy": "DEFAULT_DENY"}],
                 "tools": [{"tool_id": "TEST_TOOL", "adapter": "TEST_ADAPTER", "permission": "DEFAULT_DENY", "enabled": False, "cost_limit": 0}],
                 "runtime": {"environment": "TEST", "logging": "STRUCTURED", "retry": 0, "timeout": 1, "budget": 0},

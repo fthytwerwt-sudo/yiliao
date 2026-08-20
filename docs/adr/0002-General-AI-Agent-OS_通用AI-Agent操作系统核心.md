@@ -10,10 +10,10 @@ Accepted（2026-08-20，用户架构纠偏）。
 
 ## Decision
 
-1. 新建 `general_ai_agent_os/` 作为未来核心包。
+1. 以现有 `general_ai_business_os/` 作为 General AI Agent OS 的核心包；名称是兼容迁移资产，不表示 Core 包含业务事实。
 2. Core Runtime 只负责 Model Gateway、Agent Runtime、Workflow Engine、Tool Registry、Memory/Context、Permission、Audit、Secret 与 AI System Config。
 3. Business Config/Facts 移至 Application Plugin 的 optional business data layer；不再作为 Core Phase 2 的依赖。
-4. `medical_tourism_os/` 不删除，保留为未来 plugin/compatibility layer；`general_ai_business_os/` 保留为已实现基础能力与迁移历史，不再扩展旧 Business Config Core 路线。
+4. `medical_tourism_os/` 不删除，保留为未来 plugin/compatibility layer；`general_ai_business_os/` 继续承载新的 Agent OS Core，旧 `business_config/` 仅为未启用的兼容历史。
 5. 所有 Provider Adapter 默认 Mock/disabled；API key 仅保存 reference，绝不进入 Git。
 
 ## Consequences

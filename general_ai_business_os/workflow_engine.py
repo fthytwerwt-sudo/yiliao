@@ -11,6 +11,8 @@ class WorkflowEngine:
         nodes = definition.get("nodes")
         if not isinstance(nodes, list) or not isinstance(definition.get("edges"), list): raise ValueError("workflow_definition_invalid")
         outputs = {}
+        edges = definition["edges"]
+        if any(not isinstance(edge, Mapping) or edge.get("from") not in nodes or edge.get("to") not in nodes for edge in edges): raise ValueError("workflow_edges_invalid")
         for node in nodes:
             attempts = 0
             while True:
@@ -23,5 +25,6 @@ class WorkflowEngine:
                         fallback = definition.get("fallback")
                         if fallback in nodes and fallback not in outputs:
                             outputs[node] = self._agents.execute(fallback, payload)
+                            break
                         else: raise
         return WorkflowResult(status="COMPLETED", outputs=outputs)

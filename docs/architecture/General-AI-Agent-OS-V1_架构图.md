@@ -5,7 +5,7 @@ Application Plugins（业务插件：未来 medical_tourism 等）
                          |
 AI Capability Layer（Research / Content / Lead / Sales / CRM / Data / Evaluation）
                          |
-Core Infrastructure（general_ai_agent_os）
+Core Infrastructure（general_ai_business_os）
  Model Gateway | Agent Runtime | Workflow | Tool Registry
  Memory/Context | Permission/Audit | Secret references | System Config
                          |
