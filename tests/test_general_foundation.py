@@ -282,6 +282,33 @@ class GeneralFoundationTests(unittest.TestCase):
             recorded_at="2026-08-20T00:00:00Z",
         )
         self.assertEqual("2026-08-20T00:00:00+00:00", z_event.recorded_at)
+        for fraction_length in range(1, 7):
+            fraction = "1" * fraction_length
+            for timezone_suffix in ("Z", "+08:00"):
+                fractional_event = AuditEvent(
+                    action="adapter.request",
+                    outcome="blocked",
+                    details={"adapter": "content"},
+                    recorded_at=f"2026-08-20T08:00:00.{fraction}{timezone_suffix}",
+                )
+                expected_utc = (
+                    "2026-08-20T08:00:00+00:00"
+                    if timezone_suffix == "Z"
+                    else "2026-08-20T00:00:00+00:00"
+                )
+                self.assertEqual(expected_utc, fractional_event.recorded_at)
+        for invalid_timestamp in (
+            "2026-08-20T00:00:00.1234567Z",
+            "2026-02-30T00:00:00Z",
+            "2024-02-29T00:00:60Z",
+        ):
+            with self.assertRaisesRegex(ValueError, "audit_recorded_at_invalid"):
+                AuditEvent(
+                    action="adapter.request",
+                    outcome="blocked",
+                    details={"adapter": "content"},
+                    recorded_at=invalid_timestamp,
+                )
         exported = event.to_dict()
         exported["recorded_at"] = "ghp_ABC123SECRET"
         self.assertEqual("2026-08-20T00:00:00+00:00", event.recorded_at)
@@ -310,6 +337,15 @@ class GeneralFoundationTests(unittest.TestCase):
                 details=["TEST_UNTRUSTED"],
                 recorded_at="2026-08-20T00:00:00+00:00",
             )
+
+    def test_system_config_rejects_truthy_non_boolean_external_action_flag(self) -> None:
+        """权限总开关必须是真正布尔值，不能让字符串或数字意外授权未来 Adapter。"""
+
+        from general_ai_business_os.config import SystemConfig
+
+        for invalid_value in ("false", "true", 0, 1, None):
+            with self.assertRaisesRegex(ValueError, "external_actions_allowed_must_be_bool"):
+                SystemConfig(external_actions_allowed=invalid_value)
 
     def test_mock_adapter_reports_dry_run_without_external_execution(self) -> None:
         """Mock 可以验证调用合同，但必须明确它没有触发外部副作用。"""

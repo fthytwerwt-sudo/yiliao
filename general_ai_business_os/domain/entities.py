@@ -94,7 +94,7 @@ _ALLOWED_AUDIT_DETAIL_CODES = {
     "status": frozenset({"BLOCKED", "DISABLED", "IMPLEMENTED", "MOCK"}),
 }
 _RFC3339_TIMESTAMP_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$"
+    r"^(?P<base>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?P<fraction>\.\d{1,6})?(?P<timezone>Z|[+-]\d{2}:\d{2})$"
 )
 
 
@@ -138,10 +138,19 @@ def _normalize_audit_recorded_at(value: Any) -> str:
     因此只接受带时区的 ISO-8601 字符串，并固定导出为秒级 UTC 格式。
     """
 
-    if not isinstance(value, str) or not _RFC3339_TIMESTAMP_PATTERN.fullmatch(value):
+    if not isinstance(value, str):
         raise ValueError("audit_recorded_at_invalid")
+    match = _RFC3339_TIMESTAMP_PATTERN.fullmatch(value)
+    if match is None:
+        raise ValueError("audit_recorded_at_invalid")
+    fraction = match.group("fraction")
+    # Python 3.9's fromisoformat only accepts 3 or 6 fractional digits. The public contract
+    # accepts the full RFC3339 subset of 1-6 digits, so pad the verified fraction before parsing.
+    normalized_fraction = f".{fraction[1:].ljust(6, '0')}" if fraction else ""
+    timezone_value = match.group("timezone")
+    parser_timestamp = f"{match.group('base')}{normalized_fraction}{'+00:00' if timezone_value == 'Z' else timezone_value}"
     try:
-        parsed = datetime.fromisoformat(f"{value[:-1]}+00:00" if value.endswith("Z") else value)
+        parsed = datetime.fromisoformat(parser_timestamp)
     except ValueError as error:
         raise ValueError("audit_recorded_at_invalid") from error
     if parsed.tzinfo is None or parsed.utcoffset() is None:

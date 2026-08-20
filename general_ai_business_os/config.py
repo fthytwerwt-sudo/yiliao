@@ -42,6 +42,12 @@ class SystemConfig:
     api_port: int = 0
     external_actions_allowed: bool = False
 
+    def __post_init__(self) -> None:
+        """拒绝 truthy 非布尔开关，防止配置反序列化把字符串误解释为外部执行授权。"""
+
+        if not isinstance(self.external_actions_allowed, bool):
+            raise ValueError("external_actions_allowed_must_be_bool")
+
     def resolved_state_root(self) -> Path:
         """返回明确的本地状态目录，避免接口层各自使用不一致的临时位置。"""
 
