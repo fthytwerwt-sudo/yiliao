@@ -31,9 +31,10 @@ class AgentOsRuntimeTests(unittest.TestCase):
 
         result = workflow.run({"nodes": ["TEST_AGENT"], "edges": []}, {"input": "TEST_INPUT"})
 
-        self.assertEqual("COMPLETED", result.status)
+        self.assertEqual("BLOCKED", result.status)
         self.assertEqual("MOCK", result.outputs["TEST_AGENT"]["model_status"])
-        self.assertEqual([], result.outputs["TEST_AGENT"]["tool_results"])
+        self.assertEqual("BLOCKED", result.outputs["TEST_AGENT"]["state"])
+        self.assertEqual("BLOCKED", result.outputs["TEST_AGENT"]["tool_results"][0]["status"])
 
     def test_plugin_registry_accepts_only_core_api_plugins_without_business_fact_import(self) -> None:
         from general_ai_business_os.plugins import PluginRegistry

@@ -16,8 +16,8 @@ class AgentRegistry:
         agent = self._agents.get(agent_id)
         if agent is None: raise ValueError("agent_not_registered")
         response = self._gateway.chat(agent.model_provider, [{"role": "system", "content": agent.system_prompt}, {"role": "user", "content": str(payload.get("input", ""))}])
-        tool_results = [self._tools.execute(tool, payload) for tool in agent.tools if next(t for t in self._config.tools if t.tool_id == tool).enabled]
-        state = "COMPLETED" if response["status"] == "MOCK" else "BLOCKED"
+        tool_results = [self._tools.execute(tool, payload) for tool in agent.tools]
+        state = "COMPLETED" if response["status"] == "MOCK" and all(item["status"] != "BLOCKED" for item in tool_results) else "BLOCKED"
         result = {"agent_id": agent_id, "state": state, "model_status": response["status"], "response": response.get("content", ""), "tool_results": tool_results}
         self._memory.put(f"agent:{agent_id}", {"state": state, "model_status": response["status"]})
         return result
