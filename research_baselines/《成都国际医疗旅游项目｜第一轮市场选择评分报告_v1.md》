@@ -425,11 +425,11 @@ Decision（正式决策）或 Hold / Stop
 
 | 完成层 | 状态 | 说明 |
 | --- | --- | --- |
-| technical_validation（技术验证） | 待本报告写入后核验 | 仅检查 Markdown、Git 提交与同步，不代表业务 |
+| technical_validation（技术验证） | `passed` | 已检查 Markdown 结构、15 个候选/评分行、来源 ID、格式与敏感模式；不代表业务 |
 | content_validation（内容验证） | 本文待人工阅读 | 已覆盖市场池、评分、Top 5、30 天、系统连接与来源；不等于接受结论 |
 | human_review（人工复审） | `required` | 用户与 ChatGPT 需确认权重、加拿大建议和停止线 |
 | professional_review（专业复核） | `required` | 医疗、隐私、广告、旅行、支付、合同和机构供给 |
 | business_observation（真实业务观察） | `not_started` | 当前没有外部执行、客户、付款、机构合作或经营指标 |
-| sync_status（同步状态） | 待 Git push / Google Drive readback | 本文件完成后单独核验 |
+| sync_status（同步状态） | `confirmed` | GitHub `main` 已 push 并远端回读；同一 Markdown 已上传至 Google Drive“医疗”文件夹并回读确认 |
 
 **最终提醒：** 本报告推荐的是“先验证加拿大这个假设”，不是“现在开始做加拿大市场”。任何后续 `Decision（正式决策）` 都需要用户与 ChatGPT 基于本报告、真实反馈、供给和专业输入另行写入 `project_facts/04_正式决策记录.md`。
