@@ -136,6 +136,42 @@ class GeneralFoundationTests(unittest.TestCase):
         for unsafe_value in unsafe_values:
             self.assertNotIn(unsafe_value, persisted)
 
+    def test_audit_event_return_is_immutable_and_stays_safe_when_serialized_for_storage(self) -> None:
+        """审计写盘后返回的事件也必须保持安全，不能被调用方改写成存储旁路。"""
+
+        from general_ai_business_os.audit.logger import AuditLogger
+        from general_ai_business_os.domain.entities import StoredRecord
+        from general_ai_business_os.storage.sqlite_store import SqliteStore
+
+        original_details = {"adapter": "content", "operation": "generate", "reason": "external_actions_disabled"}
+        unsafe_values = ("PATIENT_NOTE", "TEST_PERSON", "ghp_ABC123SECRET", "TEST_HEALTH_DETAIL")
+        with tempfile.TemporaryDirectory() as directory:
+            event = AuditLogger(Path(directory) / "audit.jsonl").record(
+                action="adapter.request",
+                outcome="blocked",
+                details=original_details,
+            )
+            original_details["adapter"] = "PATIENT_NOTE"
+            self.assertEqual("content", event.details["adapter"])
+            for unsafe_value in unsafe_values:
+                with self.assertRaises(TypeError):
+                    event.details["adapter"] = unsafe_value
+
+            store = SqliteStore(Path(directory) / "state.sqlite3")
+            store.migrate()
+            record = StoredRecord.new(
+                record_id="TEST_AUDIT_EVENT",
+                kind="audit_event",
+                payload=event.to_dict(),
+            )
+            store.save_record(record)
+            persisted = store.get_record("TEST_AUDIT_EVENT")
+
+        self.assertIsNotNone(persisted)
+        persisted_text = json.dumps(persisted.payload, ensure_ascii=False, sort_keys=True)
+        for unsafe_value in unsafe_values:
+            self.assertNotIn(unsafe_value, persisted_text)
+
     def test_mock_adapter_reports_dry_run_without_external_execution(self) -> None:
         """Mock 可以验证调用合同，但必须明确它没有触发外部副作用。"""
 

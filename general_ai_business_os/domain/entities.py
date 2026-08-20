@@ -17,7 +17,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict
+from types import MappingProxyType
+from typing import Any, Dict, Mapping
 
 
 def utc_now_isoformat() -> str:
@@ -72,17 +73,33 @@ class OperationResult:
 
 @dataclass(frozen=True)
 class AuditEvent:
-    """已经过安全字段清洗的审计事件；原始敏感输入不能进入该对象。"""
+    """
+    已经过安全字段清洗且传递性不可变的审计事件。
+
+    关键边界：
+    `frozen=True` 只能阻止属性重新赋值，不能阻止普通 `dict` 被原地改写。这里把详情复制为
+    `MappingProxyType`，使 AuditLogger 返回后仍不能被调用者植入敏感内容再传给通用 Storage。
+    """
 
     action: str
     outcome: str
-    details: Dict[str, Any]
+    details: Mapping[str, Any]
     recorded_at: str
 
-    def to_dict(self) -> Dict[str, Any]:
-        """将 dataclass 转为 JSON 可写入的字典，保持审计字段稳定。"""
+    def __post_init__(self) -> None:
+        """复制并冻结详情映射，切断调用者原始 dict 与安全事件之间的可变引用。"""
 
-        return asdict(self)
+        object.__setattr__(self, "details", MappingProxyType(dict(self.details)))
+
+    def to_dict(self) -> Dict[str, Any]:
+        """导出新的普通字典供 JSON/Storage 使用，不暴露事件内部的可变引用。"""
+
+        return {
+            "action": self.action,
+            "outcome": self.outcome,
+            "details": dict(self.details),
+            "recorded_at": self.recorded_at,
+        }
 
 
 @dataclass(frozen=True)
