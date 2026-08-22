@@ -1,0 +1,9 @@
+{
+  "plugin_id": "ACQUISITION",
+  "version": "1.0.0-mock",
+  "permissions": [
+    "WORKFLOW_RUN"
+  ],
+  "dependencies": [],
+  "entrypoint": "medical_tourism_os.acquisition:plugin_descriptor"
+}
